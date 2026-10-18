@@ -94,19 +94,51 @@ describe('diffview.vcs.file', function()
     return layout.a
   end
 
-  for _, reuse_file in ipairs({ true, false }) do
+  local failure_cases = {
+    { name = 'a failed load using the same file', reuse_file = true },
+    { name = 'a failed load using a new file' },
+    { name = 'a producer exception', reuse_file = true, producer_error = true },
+    { name = 'a failure delivered in a fast event', reuse_file = true, fast_event = true },
+  }
+
+  for _, case in ipairs(failure_cases) do
     it(
-      ('retries a failed load using %s'):format(reuse_file and 'the same file' or 'a new file'),
+      'cleans up and retries ' .. case.name,
       async_test(function()
+        local show = adapter.show
+        local expected_error = 'git show failed'
+        if case.producer_error then
+          expected_error = 'producer raised an error'
+          adapter.show = async.void(function(self, path, rev)
+            await(show(self, path, rev))
+            error(expected_error)
+          end)
+        end
         local file = new_file()
         local failed = start_load(file)
         local name = api.nvim_buf_get_name(failed.bufnr)
-        finish_load(failed, { 'git show failed' }, nil, 'git show failed')
+        if case.fast_event then
+          local was_fast = false
+          local timer = vim.loop.new_timer()
+          timer:start(0, 0, function()
+            timer:stop()
+            timer:close()
+            was_fast = vim.in_fast_event()
+            pcall(failed.request, { expected_error })
+          end)
+          check_load(failed, expected_error)
+          eq(true, was_fast)
+        elseif case.producer_error then
+          finish_load(failed, nil, {}, expected_error)
+        else
+          finish_load(failed, { expected_error }, nil, expected_error)
+        end
         eq(nil, file.bufnr)
         eq(false, api.nvim_buf_is_valid(failed.bufnr))
         eq(nil, utils.find_named_buffer(name))
 
-        local retry_file = reuse_file and file or new_file()
+        adapter.show = show
+        local retry_file = case.reuse_file and file or new_file()
         local retry = start_load(retry_file)
         eq(2, #requests)
         finish_load(retry, nil, { 'original contents' })
@@ -116,44 +148,6 @@ describe('diffview.vcs.file', function()
       end)
     )
   end
-
-  it(
-    'cleans up when the data producer raises an error',
-    async_test(function()
-      local show = adapter.show
-      adapter.show = async.void(function(self, path, rev)
-        await(show(self, path, rev))
-        error('producer raised an error')
-      end)
-      local file = new_file()
-      local load = start_load(file)
-      finish_load(load, nil, {}, 'producer raised an error')
-      eq(nil, file.bufnr)
-      eq(false, api.nvim_buf_is_valid(load.bufnr))
-    end)
-  )
-
-  it(
-    'cleans up a failed load delivered in a fast event',
-    async_test(function()
-      local file = new_file()
-      local load = start_load(file)
-      local name = api.nvim_buf_get_name(load.bufnr)
-      local was_fast = false
-      local timer = vim.loop.new_timer()
-      timer:start(0, 0, function()
-        timer:stop()
-        timer:close()
-        was_fast = vim.in_fast_event()
-        pcall(load.request, { 'fast-event load failure' })
-      end)
-      check_load(load, 'fast-event load failure')
-      eq(true, was_fast)
-      eq(nil, file.bufnr)
-      eq(false, api.nvim_buf_is_valid(load.bufnr))
-      eq(nil, utils.find_named_buffer(name))
-    end)
-  )
 
   for _, method in ipairs({ 'dispose_buffer', 'destroy' }) do
     it(
@@ -193,19 +187,6 @@ describe('diffview.vcs.file', function()
       end)
     )
   end
-
-  it(
-    'keeps index buffers editable and registered after loading',
-    async_test(function()
-      local file = new_file(GitRev(RevType.STAGE, 0))
-      local load = start_load(file)
-      finish_load(load, nil, { 'index contents' })
-      eq(true, vim.bo[load.bufnr].modifiable)
-      eq('', vim.bo[load.bufnr].buftype)
-      eq('index-blob', file.blob_hash)
-      eq(load.bufnr, File.index_bufmap[adapter.ctx.toplevel][file.path])
-    end)
-  )
 
   it(
     'cleans up index registration when buffer setup fails',
@@ -254,6 +235,11 @@ describe('diffview.vcs.file', function()
           eq(true, second_file:is_ready())
           eq({ 'shared contents' }, api.nvim_buf_get_lines(second.bufnr, 0, -1, false))
           eq(stage and 'index-blob' or nil, second_file.blob_hash)
+          eq(stage, vim.bo[first.bufnr].modifiable)
+          eq(stage and '' or 'nowrite', vim.bo[first.bufnr].buftype)
+          if stage then
+            eq(first.bufnr, File.index_bufmap[adapter.ctx.toplevel][first_file.path])
+          end
 
           local reused_file = new_file(rev)
           local reused = start_load(reused_file)
@@ -289,36 +275,23 @@ describe('diffview.vcs.file', function()
     end)
   )
 
-  it(
-    'clears a deleted shared buffer from the cache',
-    async_test(function()
-      local file = new_file()
-      local first = start_load(file)
-      finish_load(first, nil, { 'original contents' })
-      api.nvim_buf_delete(first.bufnr, { force = true })
-      eq(false, file:is_ready())
-      local replacement = start_load(file)
-      eq(2, #requests)
-      finish_load(replacement, nil, { 'replacement contents' })
-      eq(true, file:is_ready())
-    end)
-  )
-
-  it(
-    'reloads an unloaded shared buffer',
-    async_test(function()
-      local file = new_file()
-      local first = start_load(file)
-      finish_load(first, nil, { 'original contents' })
-      api.nvim_buf_delete(first.bufnr, { unload = true })
-      eq(true, file:is_valid())
-      eq(false, file:is_ready())
-      local replacement = start_load(file)
-      eq(2, #requests)
-      finish_load(replacement, nil, { 'replacement contents' })
-      eq(true, file:is_ready())
-    end)
-  )
+  for _, unload in ipairs({ false, true }) do
+    it(
+      ('reloads a %s shared buffer'):format(unload and 'unloaded' or 'deleted'),
+      async_test(function()
+        local file = new_file()
+        local first = start_load(file)
+        finish_load(first, nil, { 'original contents' })
+        api.nvim_buf_delete(first.bufnr, { force = true, unload = unload })
+        eq(unload, file:is_valid())
+        eq(false, file:is_ready())
+        local replacement = start_load(file)
+        eq(2, #requests)
+        finish_load(replacement, nil, { 'replacement contents' })
+        eq(true, file:is_ready())
+      end)
+    )
+  end
 
   it(
     'preserves a newer shared load when a cancelled load finishes',
@@ -462,22 +435,6 @@ describe('diffview.vcs.file', function()
   )
 
   it(
-    'reports layout readiness only after every file has loaded',
-    async_test(function()
-      local first_file = new_file()
-      local second_file = new_file(nil, 'other.txt')
-      local first = start_load(first_file)
-      local second = start_load(second_file)
-      local layout = Diff2({ a = first_file, b = second_file })
-      eq(false, layout:is_files_loaded())
-      finish_load(first, nil, { 'first contents' })
-      eq(false, layout:is_files_loaded())
-      finish_load(second, nil, { 'second contents' })
-      eq(true, layout:is_files_loaded())
-    end)
-  )
-
-  it(
     'opens layout windows and emits files_opened only after loading',
     async_test(function()
       local first_file = new_file()
@@ -502,10 +459,13 @@ describe('diffview.vcs.file', function()
       local pending = layout:open_files()
       await(async.scheduler())
       eq(false, pending:is_done())
+      eq(false, layout:is_files_loaded())
       finish_load(first, nil, { 'first contents' })
+      eq(false, layout:is_files_loaded())
       eq(0, opened)
       finish_load(second, nil, { 'second contents' })
       await(pending)
+      eq(true, layout:is_files_loaded())
       eq(1, opened)
       eq(2, #requests)
     end)

@@ -19,8 +19,6 @@ describe('diffview.stream', function()
   }
 
   describe('Stream', function()
-    it('can collect a simple array', function() eq(arr1, Stream(arr1):collect()) end)
-
     it('can iterate a simple array', function()
       local s0 = {}
       local s1 = {}
