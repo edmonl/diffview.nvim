@@ -275,6 +275,8 @@ File._create_buffer = async.wrap(function(self, fullname, load, callback)
   end)
 
   if not ok then
+    -- Git failures can arrive in a fast event, where buffer APIs are unavailable.
+    await(async.scheduler())
     if buffer_loads[fullname] == load then buffer_loads[fullname] = nil end
     -- Clear only this load's state; a newer load may already own another buffer.
     if self.bufnr == bufnr then

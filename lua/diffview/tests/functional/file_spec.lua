@@ -133,6 +133,28 @@ describe('diffview.vcs.file', function()
     end)
   )
 
+  it(
+    'cleans up a failed load delivered in a fast event',
+    async_test(function()
+      local file = new_file()
+      local load = start_load(file)
+      local name = api.nvim_buf_get_name(load.bufnr)
+      local was_fast = false
+      local timer = vim.loop.new_timer()
+      timer:start(0, 0, function()
+        timer:stop()
+        timer:close()
+        was_fast = vim.in_fast_event()
+        pcall(load.request, { 'fast-event load failure' })
+      end)
+      check_load(load, 'fast-event load failure')
+      eq(true, was_fast)
+      eq(nil, file.bufnr)
+      eq(false, api.nvim_buf_is_valid(load.bufnr))
+      eq(nil, utils.find_named_buffer(name))
+    end)
+  )
+
   for _, method in ipairs({ 'dispose_buffer', 'destroy' }) do
     it(
       ('rejects a load after %s'):format(method),
