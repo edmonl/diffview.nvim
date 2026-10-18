@@ -143,7 +143,7 @@ end
 ---@return boolean
 function Layout:is_files_loaded()
   for _, f in ipairs(self:files()) do
-    if not f:is_valid() then return false end
+    if not f:is_ready() then return false end
   end
 
   return true

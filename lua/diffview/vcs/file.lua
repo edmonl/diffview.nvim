@@ -17,6 +17,15 @@ local M = {}
 
 local HAS_NVIM_0_10 = vim.fn.has('nvim-0.10') == 1
 
+---@class vcs.File.BufferLoad
+---@field bufnr integer
+---@field file vcs.File Buffer's data producer and index metadata owner.
+---@field ready boolean
+---@field future? Future
+
+---@type table<string, vcs.File.BufferLoad>
+local buffer_loads = {}
+
 ---@alias git.FileDataProducer fun(kind: vcs.FileKind, path: string, pos: "left"|"right"): string[]
 
 ---@class CustomFolds
@@ -173,6 +182,7 @@ function File:_create_local_buffer()
     -- NOTE: LSP servers might load buffers in the background and unlist
     -- them. Explicitly set the buffer as listed when loading it here.
     vim.bo[self.bufnr].buflisted = true
+    if not api.nvim_buf_is_loaded(self.bufnr) then vim.fn.bufload(self.bufnr) end
   end
 
   self:post_buf_created()
@@ -198,60 +208,14 @@ File.produce_data = async.wrap(function(self, callback)
   end
 end)
 
+---@private
 ---@param self vcs.File
----@param callback function
-File.create_buffer = async.wrap(function(self, callback)
+---@param fullname string
+---@param load vcs.File.BufferLoad
+---@param callback fun(err?: string)
+File._create_buffer = async.wrap(function(self, fullname, load, callback)
   ---@diagnostic disable: invisible
-  await(async.scheduler())
-
-  if self == File.NULL_FILE then
-    callback(File._get_null_buffer())
-    return
-  elseif self:is_valid() then
-    callback(self.bufnr)
-    return
-  end
-
-  if self.binary == nil and not config.get_config().diff_binaries then
-    self.binary = self.adapter:is_binary(self.path, self.rev)
-  end
-
-  if self.nulled or self.binary then
-    self.bufnr = File._get_null_buffer()
-    self:post_buf_created()
-    callback(self.bufnr)
-    return
-  end
-
-  if self.rev.type == RevType.LOCAL then
-    self:_create_local_buffer()
-    callback(self.bufnr)
-    return
-  end
-
-  local context
-  if self.rev.type == RevType.COMMIT then
-    context = self.rev:abbrev(11)
-  elseif self.rev.type == RevType.STAGE then
-    context = fmt(':%d:', self.rev.stage)
-  elseif self.rev.type == RevType.CUSTOM then
-    context = '[custom]'
-  end
-
-  local fullname = pl:join('diffview://', self.adapter.ctx.dir, context, self.path)
-
-  self.bufnr = utils.find_named_buffer(fullname)
-
-  if self.bufnr then
-    callback(self.bufnr)
-    return
-  end
-
-  -- Create buffer and set name *before* calling `produce_data()` to ensure
-  -- that multiple file instances won't ever try to create the same file.
-  local bufnr = api.nvim_create_buf(false, false)
-  self.bufnr = bufnr
-
+  local bufnr = load.bufnr
   -- A disposed file can start another load before this one finishes. Always
   -- target this load's buffer and verify that the file still owns it.
   local function validate_buffer()
@@ -262,6 +226,13 @@ File.create_buffer = async.wrap(function(self, callback)
 
   local ok, err = pcall(function()
     api.nvim_buf_set_name(bufnr, fullname)
+    api.nvim_create_autocmd('BufWipeout', {
+      buffer = bufnr,
+      once = true,
+      callback = function()
+        if buffer_loads[fullname] == load then buffer_loads[fullname] = nil end
+      end,
+    })
 
     local err, lines = await(self:produce_data())
     if err then error(table.concat(err, '\n')) end
@@ -304,6 +275,7 @@ File.create_buffer = async.wrap(function(self, callback)
   end)
 
   if not ok then
+    if buffer_loads[fullname] == load then buffer_loads[fullname] = nil end
     -- Clear only this load's state; a newer load may already own another buffer.
     if self.bufnr == bufnr then
       self:detach_buffer()
@@ -311,16 +283,111 @@ File.create_buffer = async.wrap(function(self, callback)
       self.blob_hash = nil
       local bufmap = File.index_bufmap[self.adapter.ctx.toplevel]
       if bufmap and bufmap[self.path] == bufnr then bufmap[self.path] = nil end
-      File.safe_delete_buf(bufnr)
+    end
+    File.safe_delete_buf(bufnr)
+  else
+    load.ready = true
+  end
+
+  callback(not ok and err or nil)
+  ---@diagnostic enable: invisible
+end)
+
+---@param self vcs.File
+---@param callback function
+File.create_buffer = async.wrap(function(self, callback)
+  ---@diagnostic disable: invisible
+  await(async.scheduler())
+
+  if self == File.NULL_FILE then
+    callback(File._get_null_buffer())
+    return
+  elseif self:is_ready() then
+    callback(self.bufnr)
+    return
+  end
+
+  self.ready = false
+  if self.binary == nil and not config.get_config().diff_binaries then
+    self.binary = self.adapter:is_binary(self.path, self.rev)
+  end
+
+  if self.nulled or self.binary then
+    self.bufnr = File._get_null_buffer()
+    self:post_buf_created()
+    self.ready = true
+    callback(self.bufnr)
+    return
+  end
+
+  if self.rev.type == RevType.LOCAL then
+    self:_create_local_buffer()
+    self.ready = true
+    callback(self.bufnr)
+    return
+  end
+
+  local context
+  if self.rev.type == RevType.COMMIT then
+    context = self.rev:abbrev(11)
+  elseif self.rev.type == RevType.STAGE then
+    context = fmt(':%d:', self.rev.stage)
+  elseif self.rev.type == RevType.CUSTOM then
+    context = '[custom]'
+  end
+
+  local fullname = pl:join('diffview://', self.adapter.ctx.dir, context, self.path)
+  -- A named buffer may still be empty. Share its load instead of treating its
+  -- existence as proof that its contents are ready.
+  local load = buffer_loads[fullname]
+  if load and not api.nvim_buf_is_loaded(load.bufnr) then
+    buffer_loads[fullname] = nil
+    if api.nvim_buf_is_valid(load.bufnr) then api.nvim_buf_delete(load.bufnr, { force = true }) end
+    load = nil
+  end
+
+  if not load then
+    load = { bufnr = api.nvim_create_buf(false, false), file = self, ready = false }
+    self.bufnr = load.bufnr
+    buffer_loads[fullname] = load
+    load.future = self:_create_buffer(fullname, load)
+  else
+    self.bufnr = load.bufnr
+  end
+
+  local err
+  if not load.ready then
+    err = await(load.future)
+    -- Resume each waiter separately, so an error in one cannot prevent the
+    -- shared future from notifying the remaining callers.
+    await(async.scheduler())
+  end
+  if err then
+    if self.bufnr == load.bufnr then
+      self.bufnr = nil
+      self.blob_hash = nil
+      self.ready = false
     end
     error(err, 0)
   end
+  if self.bufnr ~= load.bufnr or not api.nvim_buf_is_loaded(load.bufnr) then
+    error('The buffer has been invalidated!')
+  end
 
-  callback(bufnr)
+  self.blob_hash = load.file.blob_hash
+  self.ready = load.ready
+  load.future = nil
+  callback(load.bufnr)
   ---@diagnostic enable: invisible
 end)
 
 function File:is_valid() return self.bufnr and api.nvim_buf_is_valid(self.bufnr) end
+
+---Check whether the buffer contents have finished loading.
+---@return boolean
+function File:is_ready()
+  return not not (self.ready and self:is_valid() and api.nvim_buf_is_loaded(self.bufnr))
+end
 
 ---@param t1 table
 ---@param t2 table
@@ -421,6 +488,7 @@ function File:detach_buffer()
 end
 
 function File:dispose_buffer()
+  self.ready = false
   if self.bufnr and api.nvim_buf_is_loaded(self.bufnr) then
     self:detach_buffer()
 
@@ -457,6 +525,7 @@ function File._get_null_buffer()
     end
 
     File.NULL_FILE.bufnr = bn
+    File.NULL_FILE.ready = true
   end
 
   return File.NULL_FILE.bufnr

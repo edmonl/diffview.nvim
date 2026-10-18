@@ -58,7 +58,7 @@ function Window:is_valid() return self.id and api.nvim_win_is_valid(self.id) end
 function Window:is_file_open()
   return self:is_valid()
     and self.file
-    and self.file:is_valid()
+    and self.file:is_ready()
     and api.nvim_win_get_buf(self.id) == self.file.bufnr
 end
 
@@ -83,19 +83,25 @@ function Window:post_open() self:apply_custom_folds() end
 Window.load_file = async.wrap(function(self, callback)
   assert(self.file)
 
-  if self.file:is_valid() then return callback(true) end
+  local file = self.file
+  if file:is_ready() then return callback(true) end
 
-  local ok, err = pawait(self.file.create_buffer, self.file)
+  local ok, err = pawait(file.create_buffer, file)
 
-  if ok and not self.file:is_valid() then
-    -- The buffer may have been destroyed during the await
+  if self.file ~= file then return callback(false) end
+
+  -- A newer request may have finished while this request was being cancelled.
+  if file:is_ready() then return callback(true) end
+
+  if ok then
+    -- The buffer may have been destroyed during the await.
     ok = false
     err = 'The file buffer is invalid!'
   end
 
   if not ok then
     logger:error(err)
-    utils.err(fmt("Failed to create diff buffer: '%s:%s'", self.file.rev, self.file.path), true)
+    utils.err(fmt("Failed to create diff buffer: '%s:%s'", file.rev, file.path), true)
   end
 
   callback(ok)
@@ -117,20 +123,22 @@ end
 Window.open_file = async.void(function(self)
   ---@diagnostic disable: invisible
   assert(self.file)
+  local file = self.file
 
   if not (self:is_valid() and self.file.active) then return end
 
-  if not self.file:is_valid() then
+  if not file:is_ready() then
     local ok = await(self:load_file())
     await(async.scheduler())
 
     -- Ensure validity after await
-    if not (self:is_valid() and self.file.active) then return end
+    if not (self:is_valid() and self.file == file and file.active) then return end
 
     if not ok then
       self:open_fallback()
       return
     end
+    if not file:is_ready() then return end
   end
 
   self.emitter:emit('pre_open')
