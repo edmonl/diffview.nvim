@@ -207,16 +207,23 @@ end
 ---@param pipe uv_pipe_t
 ---@param out string[]
 ---@param kind StdioKind
-function Job:handle_reader(pipe, out, kind)
+---@param callback fun() Called after the reader has processed EOF.
+function Job:handle_reader(pipe, out, kind, callback)
+  local reader
   if self.buffered_std then
-    pipe:read_start(utils.bind(self.buffered_reader, self, pipe, out))
+    reader = utils.bind(self.buffered_reader, self, pipe, out)
   else
     local listeners = ({
       out = self.on_stdout_listeners,
       err = self.on_stderr_listeners,
     })[kind] or {}
-    pipe:read_start(self:line_reader(pipe, out, listeners))
+    reader = self:line_reader(pipe, out, listeners)
   end
+
+  pipe:read_start(function(err, data)
+    reader(err, data)
+    if data == nil then callback() end
+  end)
 end
 
 ---@private
@@ -283,24 +290,13 @@ Job.start = async.wrap(function(self, callback)
 
   self._started = true
 
-  local handle, pid
+  local exited, stdout_done, stderr_done, finished = false, false, false, false
 
-  handle, pid = uv.spawn(self.command, {
-    args = self.args,
-    stdio = { self.p_in, self.p_out, self.p_err },
-    cwd = self.cwd,
-    env = self.env,
-    hide = true,
-  }, function(code, signal)
-    ---@cast handle -?
-    handle:close()
-    self.p_out:read_stop()
-    self.p_err:read_stop()
-
-    if not self.code then self.code = code end
-    if not self.signal then self.signal = signal end
-
-    try_close(self.p_out, self.p_err, self.p_in)
+  local function finish()
+    -- Process exit can precede output delivery. Wait for both readers to drain
+    -- and flush their final lines before evaluating success or starting a retry.
+    if not exited or not stdout_done or not stderr_done or finished then return end
+    finished = true
 
     if self.buffered_std then
       self.stdout = process_chunks(self.stdout)
@@ -337,6 +333,24 @@ Job.start = async.wrap(function(self, callback)
     end
 
     callback(ok, err)
+  end
+
+  local handle, pid
+
+  handle, pid = uv.spawn(self.command, {
+    args = self.args,
+    stdio = { self.p_in, self.p_out, self.p_err },
+    cwd = self.cwd,
+    env = self.env,
+    hide = true,
+  }, function(code, signal)
+    try_close(handle, self.p_in)
+
+    if not self.code then self.code = code end
+    if not self.signal then self.signal = signal end
+
+    exited = true
+    finish()
   end)
 
   if not handle then
@@ -347,8 +361,14 @@ Job.start = async.wrap(function(self, callback)
   self.handle = handle
   self.pid = pid
 
-  self:handle_reader(self.p_out, self.stdout, 'out')
-  self:handle_reader(self.p_err, self.stderr, 'err')
+  self:handle_reader(self.p_out, self.stdout, 'out', function()
+    stdout_done = true
+    finish()
+  end)
+  self:handle_reader(self.p_err, self.stderr, 'err', function()
+    stderr_done = true
+    finish()
+  end)
 
   if self.p_in then self:handle_writer(self.p_in, self.writer) end
 end)
