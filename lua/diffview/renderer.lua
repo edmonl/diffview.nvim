@@ -1,5 +1,5 @@
-local oop = require("diffview.oop")
-local utils = require("diffview.utils")
+local oop = require('diffview.oop')
+local utils = require('diffview.utils')
 local api = vim.api
 
 local M = {}
@@ -40,14 +40,14 @@ M.last_draw_time = 0
 ---@field lend integer Exclusive
 ---@field height integer
 ---@field data_root RenderData
-local RenderComponent = oop.create_class("RenderComponent")
+local RenderComponent = oop.create_class('RenderComponent')
 
 ---RenderComponent constructor.
 function RenderComponent:init(name)
   self.name = name or RenderComponent.next_uid()
   self.lines = {}
   self.hl = {}
-  self.line_buffer = ""
+  self.line_buffer = ''
   self.components = {}
   self.lstart = -1
   self.lend = -1
@@ -70,14 +70,12 @@ local function create_subcomponents(parent, comp_struct, schema)
       comp = sub_comp,
     }
     comp_struct[v.name] = comp_struct[i]
-    if #v > 0 then
-      create_subcomponents(sub_comp, comp_struct[i], v)
-    end
+    if #v > 0 then create_subcomponents(sub_comp, comp_struct[i], v) end
   end
 end
 
 function RenderComponent.next_uid()
-  local uid = "comp_" .. uid_counter
+  local uid = 'comp_' .. uid_counter
   uid_counter = uid_counter + 1
   return uid
 end
@@ -108,9 +106,7 @@ function RenderComponent:create_component(schema)
   new_comp.data_root = self.data_root
   self:add_component(new_comp)
 
-  if comp_struct then
-    return comp_struct
-  end
+  if comp_struct then return comp_struct end
 
   return new_comp
 end
@@ -141,8 +137,8 @@ function RenderComponent:add_line(line, hl_group)
     self:add_hl(hl_group, #self.lines, first, first + #line)
   end
 
-  self.lines[#self.lines + 1] = self.line_buffer .. (line or "")
-  self.line_buffer = ""
+  self.lines[#self.lines + 1] = self.line_buffer .. (line or '')
+  self.line_buffer = ''
 end
 
 ---@param group string
@@ -172,7 +168,7 @@ end
 ---Finalize current line
 function RenderComponent:ln()
   self.lines[#self.lines + 1] = self.line_buffer
-  self.line_buffer = ""
+  self.line_buffer = ''
 end
 
 function RenderComponent:clear()
@@ -198,9 +194,7 @@ function RenderComponent:destroy()
   self.components = nil
 end
 
-function RenderComponent:isleaf()
-  return (not next(self.components))
-end
+function RenderComponent:isleaf() return (not next(self.components)) end
 
 ---@param line integer
 ---@return RenderComponent?
@@ -221,9 +215,7 @@ end
 ---@param callback fun(comp: RenderComponent, i: integer, parent: RenderComponent): boolean?
 function RenderComponent:some(callback)
   for i, child in ipairs(self.components) do
-    if callback(child, i, self) then
-      return
-    end
+    if callback(child, i, self) then return end
   end
 end
 
@@ -242,9 +234,7 @@ end
 function RenderComponent:leaves()
   local leaves = {}
   self:deep_some(function(comp)
-    if #comp.components == 0 then
-      leaves[#leaves + 1] = comp
-    end
+    if #comp.components == 0 then leaves[#leaves + 1] = comp end
     return false
   end)
 
@@ -252,28 +242,28 @@ function RenderComponent:leaves()
 end
 
 function RenderComponent:pretty_print()
-  local keys = { "name", "lstart", "lend" }
+  local keys = { 'name', 'lstart', 'lend' }
 
   local function recurse(depth, comp)
-    local outer_padding = string.rep(" ", depth * 2)
-    print(outer_padding .. "{")
+    local outer_padding = string.rep(' ', depth * 2)
+    print(outer_padding .. '{')
 
-    local inner_padding = outer_padding .. "  "
+    local inner_padding = outer_padding .. '  '
     for _, k in ipairs(keys) do
-      print(string.format("%s%s = %s,", inner_padding, k, vim.inspect(comp[k])))
+      print(string.format('%s%s = %s,', inner_padding, k, vim.inspect(comp[k])))
     end
     if #comp.lines > 0 then
-      print(string.format("%slines = {", inner_padding))
+      print(string.format('%slines = {', inner_padding))
       for _, line in ipairs(comp.lines) do
-        print(string.format("%s  %s,", inner_padding, vim.inspect(line)))
+        print(string.format('%s  %s,', inner_padding, vim.inspect(line)))
       end
-      print(string.format("%s},", inner_padding))
+      print(string.format('%s},', inner_padding))
     end
     for _, child in ipairs(comp.components) do
       recurse(depth + 1, child)
     end
 
-    print(outer_padding .. "},")
+    print(outer_padding .. '},')
   end
 
   recurse(0, self)
@@ -284,7 +274,7 @@ end
 ---@field hl renderer.HlList
 ---@field components RenderComponent[]
 ---@field namespace integer
-local RenderData = oop.create_class("RenderData")
+local RenderData = oop.create_class('RenderData')
 
 ---RenderData constructor.
 function RenderData:init(ns_name)
@@ -314,9 +304,7 @@ function RenderData:create_component(schema)
 end
 
 ---@param component RenderComponent
-function RenderData:add_component(component)
-  self.components[#self.components + 1] = component
-end
+function RenderData:add_component(component) self.components[#self.components + 1] = component end
 
 ---@param component RenderComponent
 function RenderData:remove_component(component)
@@ -363,7 +351,7 @@ end
 function M.destroy_comp_struct(schema)
   schema.comp = nil
   for k, v in pairs(schema) do
-    if type(v) == "table" then
+    if type(v) == 'table' then
       M.destroy_comp_struct(v)
       schema[k] = nil
     end
@@ -375,9 +363,7 @@ end
 ---@param components RenderComponent[]
 function M.create_cursor_constraint(components)
   local stack = utils.vec_slice(components, 1)
-  utils.merge_sort(stack, function(a, b)
-    return a.lstart <= b.lstart
-  end)
+  utils.merge_sort(stack, function(a, b) return a.lstart <= b.lstart end)
 
   ---Given a cursor delta or target: returns the next valid line index inside a
   ---contraining component. When the cursor is trying to move out of a
@@ -389,7 +375,7 @@ function M.create_cursor_constraint(components)
   ---@return number
   return function(winid_or_opt, delta)
     local line_from, line_to
-    if type(winid_or_opt) == "number" then
+    if type(winid_or_opt) == 'number' then
       local cursor = api.nvim_win_get_cursor(winid_or_opt)
       line_from, line_to = cursor[1] - 1, cursor[1] - 1 + delta
     else
@@ -487,13 +473,11 @@ end
 ---@param bufid integer
 ---@param data RenderData
 function M.render(bufid, data)
-  if not api.nvim_buf_is_loaded(bufid) then
-    return
-  end
+  if not api.nvim_buf_is_loaded(bufid) then return end
 
   local last = vim.loop.hrtime()
-  local was_modifiable = api.nvim_buf_get_option(bufid, "modifiable")
-  api.nvim_buf_set_option(bufid, "modifiable", true)
+  local was_modifiable = api.nvim_buf_get_option(bufid, 'modifiable')
+  api.nvim_buf_set_option(bufid, 'modifiable', true)
 
   local lines, hl_data
   local line_idx = 0
@@ -523,7 +507,7 @@ function M.render(bufid, data)
     end
   end
 
-  api.nvim_buf_set_option(bufid, "modifiable", was_modifiable)
+  api.nvim_buf_set_option(bufid, 'modifiable', was_modifiable)
   M.last_draw_time = (vim.loop.hrtime() - last) / 1000000
 end
 

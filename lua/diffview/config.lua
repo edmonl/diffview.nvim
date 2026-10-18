@@ -1,21 +1,21 @@
-require("diffview.bootstrap")
+require('diffview.bootstrap')
 
 ---@diagnostic disable: deprecated
-local EventEmitter = require("diffview.events").EventEmitter
-local actions = require("diffview.actions")
-local lazy = require("diffview.lazy")
+local EventEmitter = require('diffview.events').EventEmitter
+local actions = require('diffview.actions')
+local lazy = require('diffview.lazy')
 
-local Diff1 = lazy.access("diffview.scene.layouts.diff_1", "Diff1") ---@type Diff1|LazyModule
-local Diff2 = lazy.access("diffview.scene.layouts.diff_2", "Diff2") ---@type Diff2|LazyModule
-local Diff2Hor = lazy.access("diffview.scene.layouts.diff_2_hor", "Diff2Hor") ---@type Diff2Hor|LazyModule
-local Diff2Ver = lazy.access("diffview.scene.layouts.diff_2_ver", "Diff2Ver") ---@type Diff2Ver|LazyModule
-local Diff3 = lazy.access("diffview.scene.layouts.diff_3", "Diff3") ---@type Diff3|LazyModule
-local Diff3Hor = lazy.access("diffview.scene.layouts.diff_3_hor", "Diff3Hor") ---@type Diff3Hor|LazyModule
-local Diff3Mixed = lazy.access("diffview.scene.layouts.diff_3_mixed", "Diff3Mixed") ---@type Diff3Mixed|LazyModule
-local Diff3Ver = lazy.access("diffview.scene.layouts.diff_3_ver", "Diff3Ver") ---@type Diff3Hor|LazyModule
-local Diff4 = lazy.access("diffview.scene.layouts.diff_4", "Diff4") ---@type Diff4|LazyModule
-local Diff4Mixed = lazy.access("diffview.scene.layouts.diff_4_mixed", "Diff4Mixed") ---@type Diff4Mixed|LazyModule
-local utils = lazy.require("diffview.utils") ---@module "diffview.utils"
+local Diff1 = lazy.access('diffview.scene.layouts.diff_1', 'Diff1') ---@type Diff1|LazyModule
+local Diff2 = lazy.access('diffview.scene.layouts.diff_2', 'Diff2') ---@type Diff2|LazyModule
+local Diff2Hor = lazy.access('diffview.scene.layouts.diff_2_hor', 'Diff2Hor') ---@type Diff2Hor|LazyModule
+local Diff2Ver = lazy.access('diffview.scene.layouts.diff_2_ver', 'Diff2Ver') ---@type Diff2Ver|LazyModule
+local Diff3 = lazy.access('diffview.scene.layouts.diff_3', 'Diff3') ---@type Diff3|LazyModule
+local Diff3Hor = lazy.access('diffview.scene.layouts.diff_3_hor', 'Diff3Hor') ---@type Diff3Hor|LazyModule
+local Diff3Mixed = lazy.access('diffview.scene.layouts.diff_3_mixed', 'Diff3Mixed') ---@type Diff3Mixed|LazyModule
+local Diff3Ver = lazy.access('diffview.scene.layouts.diff_3_ver', 'Diff3Ver') ---@type Diff3Hor|LazyModule
+local Diff4 = lazy.access('diffview.scene.layouts.diff_4', 'Diff4') ---@type Diff4|LazyModule
+local Diff4Mixed = lazy.access('diffview.scene.layouts.diff_4_mixed', 'Diff4Mixed') ---@type Diff4Mixed|LazyModule
+local utils = lazy.require('diffview.utils') ---@module "diffview.utils"
 
 local M = {}
 
@@ -23,7 +23,7 @@ local setup_done = false
 
 ---@deprecated
 function M.diffview_callback(cb_name)
-  if cb_name == "select" then
+  if cb_name == 'select' then
     -- Reroute deprecated action
     return actions.select_entry
   end
@@ -344,9 +344,7 @@ M.log_option_defaults = {
 
 ---@return DiffviewConfig
 function M.get_config()
-  if not setup_done then
-    M.setup()
-  end
+  if not setup_done then M.setup() end
 
   return M._config
 end
@@ -359,18 +357,16 @@ function M.get_log_options(single_file, t, vcs)
   local log_options
 
   if single_file then
-    log_options =  M._config.file_history_panel.log_options[vcs].single_file
+    log_options = M._config.file_history_panel.log_options[vcs].single_file
   else
     log_options = M._config.file_history_panel.log_options[vcs].multi_file
   end
 
   if t then
-    log_options = vim.tbl_extend("force", log_options, t)
+    log_options = vim.tbl_extend('force', log_options, t)
 
     for k, _ in pairs(log_options) do
-      if t[k] == "" then
-        log_options[k] = nil
-      end
+      if t[k] == '' then log_options[k] = nil end
     end
   end
 
@@ -398,7 +394,7 @@ local layout_map = {
 ---@param layout_name LayoutName
 ---@return Layout
 function M.name_to_layout(layout_name)
-  assert(layout_map[layout_name], "Invalid layout name: " .. layout_name)
+  assert(layout_map[layout_name], 'Invalid layout name: ' .. layout_name)
 
   return layout_map[layout_name].__get()
 end
@@ -419,15 +415,13 @@ end
 
 function M.find_option_keymap(t)
   for _, mapping in ipairs(t) do
-    if mapping[3] and mapping[3] == actions.options then
-      return mapping
-    end
+    if mapping[3] and mapping[3] == actions.options then return mapping end
   end
 end
 
 function M.find_help_keymap(t)
   for _, mapping in ipairs(t) do
-    if type(mapping[4]) == "table" and mapping[4].desc == "Open the help panel" then
+    if type(mapping[4]) == 'table' and mapping[4].desc == 'Open the help panel' then
       return mapping
     end
   end
@@ -437,31 +431,33 @@ end
 ---@param no_quote? boolean
 ---@return string
 local function fmt_enum(values, no_quote)
-  return table.concat(vim.tbl_map(function(v)
-    return (not no_quote and type(v) == "string") and ("'" .. v .. "'") or v
-  end, values), "|")
+  return table.concat(
+    vim.tbl_map(
+      function(v) return (not no_quote and type(v) == 'string') and ("'" .. v .. "'") or v end,
+      values
+    ),
+    '|'
+  )
 end
 
 ---@param ... table
 ---@return table
 function M.extend_keymaps(...)
-  local argc = select("#", ...)
+  local argc = select('#', ...)
   local argv = { ... }
   local contexts = {}
 
   for i = 1, argc do
     local cur = argv[i]
-    if type(cur) == "table" then
-      contexts[#contexts + 1] = { subject = cur, expanded = {} }
-    end
+    if type(cur) == 'table' then contexts[#contexts + 1] = { subject = cur, expanded = {} } end
   end
 
   for _, ctx in ipairs(contexts) do
     -- Expand the normal mode maps
     for lhs, rhs in pairs(ctx.subject) do
-      if type(lhs) == "string" then
-        ctx.expanded["n " .. lhs] = {
-          "n",
+      if type(lhs) == 'string' then
+        ctx.expanded['n ' .. lhs] = {
+          'n',
           lhs,
           rhs,
           { silent = true, nowait = true },
@@ -470,21 +466,14 @@ function M.extend_keymaps(...)
     end
 
     for _, map in ipairs(ctx.subject) do
-      for _, mode in ipairs(type(map[1]) == "table" and map[1] or { map[1] }) do
-        ctx.expanded[mode .. " " .. map[2]] = utils.vec_join(
-          mode,
-          map[2],
-          utils.vec_slice(map, 3)
-        )
+      for _, mode in ipairs(type(map[1]) == 'table' and map[1] or { map[1] }) do
+        ctx.expanded[mode .. ' ' .. map[2]] = utils.vec_join(mode, map[2], utils.vec_slice(map, 3))
       end
     end
   end
 
-  local merged = vim.tbl_extend("force", unpack(
-    vim.tbl_map(function(v)
-      return v.expanded
-    end, contexts)
-  ))
+  local merged =
+    vim.tbl_extend('force', unpack(vim.tbl_map(function(v) return v.expanded end, contexts)))
 
   return vim.tbl_values(merged)
 end
@@ -492,33 +481,31 @@ end
 function M.setup(user_config)
   user_config = user_config or {}
 
-  M._config = vim.tbl_deep_extend(
-    "force",
-    utils.tbl_deep_clone(M.defaults),
-    user_config
-  )
+  M._config = vim.tbl_deep_extend('force', utils.tbl_deep_clone(M.defaults), user_config)
   ---@type EventEmitter
   M.user_emitter = EventEmitter()
 
   --#region DEPRECATION NOTICES
 
-  if type(M._config.file_panel.use_icons) ~= "nil" then
+  if type(M._config.file_panel.use_icons) ~= 'nil' then
     utils.warn("'file_panel.use_icons' has been deprecated. See ':h diffview.changelog-64'.")
   end
 
   -- Move old panel preoperties to win_config
-  local old_win_config_spec = { "position", "width", "height" }
-  for _, panel_name in ipairs({ "file_panel", "file_history_panel" }) do
+  local old_win_config_spec = { 'position', 'width', 'height' }
+  for _, panel_name in ipairs({ 'file_panel', 'file_history_panel' }) do
     local panel_config = M._config[panel_name]
-      ---@cast panel_config table
+    ---@cast panel_config table
     local notified = false
 
     for _, option in ipairs(old_win_config_spec) do
       if panel_config[option] ~= nil then
         if not notified then
           utils.warn(
-            ("'%s.{%s}' has been deprecated. See ':h diffview.changelog-136'.")
-            :format(panel_name, fmt_enum(old_win_config_spec, true))
+            ("'%s.{%s}' has been deprecated. See ':h diffview.changelog-136'."):format(
+              panel_name,
+              fmt_enum(old_win_config_spec, true)
+            )
           )
           notified = true
         end
@@ -530,37 +517,40 @@ function M.setup(user_config)
 
   -- Move old keymaps
   if user_config.key_bindings then
-    M._config.keymaps = vim.tbl_deep_extend("force", M._config.keymaps, user_config.key_bindings)
+    M._config.keymaps = vim.tbl_deep_extend('force', M._config.keymaps, user_config.key_bindings)
     user_config.keymaps = user_config.key_bindings
     M._config.key_bindings = nil
   end
 
-  local user_log_options = utils.tbl_access(user_config, "file_history_panel.log_options")
+  local user_log_options = utils.tbl_access(user_config, 'file_history_panel.log_options')
   if user_log_options then
     local top_options = {
-      "single_file",
-      "multi_file",
+      'single_file',
+      'multi_file',
     }
     for _, name in ipairs(top_options) do
       if user_log_options[name] ~= nil then
-        utils.warn("Global config of 'file_panel.log_options' has been deprecated. See ':h diffview.changelog-271'.")
+        utils.warn(
+          "Global config of 'file_panel.log_options' has been deprecated. See ':h diffview.changelog-271'."
+        )
       end
       break
     end
 
     local option_names = {
-      "max_count",
-      "follow",
-      "all",
-      "merges",
-      "no_merges",
-      "reverse",
+      'max_count',
+      'follow',
+      'all',
+      'merges',
+      'no_merges',
+      'reverse',
     }
     for _, name in ipairs(option_names) do
       if user_log_options[name] ~= nil then
         utils.warn(
-          ("'file_history_panel.log_options.{%s}' has been deprecated. See ':h diffview.changelog-151'.")
-          :format(fmt_enum(option_names, true))
+          ("'file_history_panel.log_options.{%s}' has been deprecated. See ':h diffview.changelog-151'."):format(
+            fmt_enum(option_names, true)
+          )
         )
         break
       end
@@ -569,21 +559,19 @@ function M.setup(user_config)
 
   --#endregion
 
-  if #M._config.git_cmd == 0 then
-    M._config.git_cmd = M.defaults.git_cmd
-  end
+  if #M._config.git_cmd == 0 then M._config.git_cmd = M.defaults.git_cmd end
 
   do
     -- Validate layouts
     local view = M._config.view
-    local standard_layouts = { "diff2_horizontal", "diff2_vertical", -1 }
+    local standard_layouts = { 'diff2_horizontal', 'diff2_vertical', -1 }
     local merge_layuots = {
-      "diff1_plain",
-      "diff3_horizontal",
-      "diff3_vertical",
-      "diff3_mixed",
-      "diff4_mixed",
-      -1
+      'diff1_plain',
+      'diff3_horizontal',
+      'diff3_vertical',
+      'diff3_mixed',
+      'diff4_mixed',
+      -1,
     }
     local valid_layouts = {
       default = standard_layouts,
@@ -593,44 +581,38 @@ function M.setup(user_config)
 
     for _, kind in ipairs(vim.tbl_keys(valid_layouts)) do
       if not vim.tbl_contains(valid_layouts[kind], view[kind].layout) then
-        utils.err(("Invalid layout name '%s' for 'view.%s'! Must be one of (%s)."):format(
-          view[kind].layout,
-          kind,
-          fmt_enum(valid_layouts[kind])
-        ))
+        utils.err(
+          ("Invalid layout name '%s' for 'view.%s'! Must be one of (%s)."):format(
+            view[kind].layout,
+            kind,
+            fmt_enum(valid_layouts[kind])
+          )
+        )
         view[kind].layout = M.defaults.view[kind].layout
       end
     end
   end
 
-  for _, name in ipairs({ "single_file", "multi_file" }) do
-    for _, vcs in ipairs({ "git", "hg" }) do
+  for _, name in ipairs({ 'single_file', 'multi_file' }) do
+    for _, vcs in ipairs({ 'git', 'hg' }) do
       local t = M._config.file_history_panel.log_options[vcs]
-      t[name] = vim.tbl_extend(
-        "force",
-        M.log_option_defaults[vcs],
-        t[name]
-      )
+      t[name] = vim.tbl_extend('force', M.log_option_defaults[vcs], t[name])
       for k, _ in pairs(t[name]) do
-        if t[name][k] == "" then
-          t[name][k] = nil
-        end
+        if t[name][k] == '' then t[name][k] = nil end
       end
     end
   end
 
   for event, callback in pairs(M._config.hooks) do
-    if type(callback) == "function" then
-      M.user_emitter:on(event, function (_, ...)
-        callback(...)
-      end)
+    if type(callback) == 'function' then
+      M.user_emitter:on(event, function(_, ...) callback(...) end)
     end
   end
 
   if M._config.keymaps.disable_defaults then
     for name, _ in pairs(M._config.keymaps) do
-      if name ~= "disable_defaults" then
-        M._config.keymaps[name] = utils.tbl_access(user_config, { "keymaps", name }) or {}
+      if name ~= 'disable_defaults' then
+        M._config.keymaps[name] = utils.tbl_access(user_config, { 'keymaps', name }) or {}
       end
     end
   else
@@ -639,22 +621,18 @@ function M.setup(user_config)
 
   -- Merge default and user keymaps
   for name, keymap in pairs(M._config.keymaps) do
-    if type(name) == "string" and type(keymap) == "table" then
-      M._config.keymaps[name] = M.extend_keymaps(
-        keymap,
-        utils.tbl_access(user_config, { "keymaps", name }) or {}
-      )
+    if type(name) == 'string' and type(keymap) == 'table' then
+      M._config.keymaps[name] =
+        M.extend_keymaps(keymap, utils.tbl_access(user_config, { 'keymaps', name }) or {})
     end
   end
 
   -- Disable keymaps set to `false`
   for name, keymaps in pairs(M._config.keymaps) do
-    if type(name) == "string" and type(keymaps) == "table" then
+    if type(name) == 'string' and type(keymaps) == 'table' then
       for i = #keymaps, 1, -1 do
         local v = keymaps[i]
-        if type(v) == "table" and not v[3] then
-          table.remove(keymaps, i)
-        end
+        if type(v) == 'table' and not v[3] then table.remove(keymaps, i) end
       end
     end
   end

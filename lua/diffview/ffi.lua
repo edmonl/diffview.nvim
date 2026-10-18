@@ -1,16 +1,14 @@
-local ffi = require("ffi")
+local ffi = require('ffi')
 
 local C = ffi.C
 
 local M = setmetatable({}, { __index = ffi })
 
-local HAS_NVIM_0_9 = vim.fn.has("nvim-0.9") == 1
+local HAS_NVIM_0_9 = vim.fn.has('nvim-0.9') == 1
 
 ---Check if the |textlock| is active.
 ---@return boolean
-function M.nvim_is_textlocked()
-  return C.textlock > 0
-end
+function M.nvim_is_textlocked() return C.textlock > 0 end
 
 ---Check if the nvim API is locked for any reason.
 ---See: |api-fast|, |textlock|
@@ -18,9 +16,7 @@ end
 function M.nvim_is_locked()
   if vim.in_fast_event() then return true end
 
-  if HAS_NVIM_0_9 then
-    return C.textlock > 0 or C.allbuf_lock > 0 or C.expr_map_lock > 0
-  end
+  if HAS_NVIM_0_9 then return C.textlock > 0 or C.allbuf_lock > 0 or C.expr_map_lock > 0 end
 
   return C.textlock > 0 or C.allbuf_lock > 0 or C.ex_normal_lock > 0
 end

@@ -1,18 +1,18 @@
-local lazy = require("diffview.lazy")
-local oop = require("diffview.oop")
+local lazy = require('diffview.lazy')
+local oop = require('diffview.oop')
 
-local utils = lazy.require("diffview.utils") ---@module "diffview.utils"
+local utils = lazy.require('diffview.utils') ---@module "diffview.utils"
 
 local M = {}
 
-local short_flag_pat = { "^[-+](%a)=?(.*)" }
-local long_flag_pat = { "^%-%-(%a[%a%d-]*)=?(.*)", "^%+%+(%a[%a%d-]*)=?(.*)" }
+local short_flag_pat = { '^[-+](%a)=?(.*)' }
+local long_flag_pat = { '^%-%-(%a[%a%d-]*)=?(.*)', '^%+%+(%a[%a%d-]*)=?(.*)' }
 
 ---@class ArgObject : diffview.Object
 ---@field flags table<string, string[]>
 ---@field args string[]
 ---@field post_args string[]
-local ArgObject = oop.create_class("ArgObject")
+local ArgObject = oop.create_class('ArgObject')
 
 ---ArgObject constructor.
 ---@param flags table<string, string>
@@ -36,36 +36,26 @@ end
 ---@return string[]|string|boolean
 function ArgObject:get_flag(names, opt)
   opt = opt or {}
-  if opt.no_empty then
-    opt.expect_string = true
-  end
+  if opt.no_empty then opt.expect_string = true end
 
-  if type(names) ~= "table" then
-    names = { names }
-  end
+  if type(names) ~= 'table' then names = { names } end
 
   local values = {}
   for _, name in ipairs(names) do
-    if self.flags[name] then
-      utils.vec_push(values, unpack(self.flags[name]))
-    end
+    if self.flags[name] then utils.vec_push(values, unpack(self.flags[name])) end
   end
 
   values = utils.tbl_fmap(values, function(v)
-    if opt.expect_string and v == "true" then
+    if opt.expect_string and v == 'true' then
       -- Undo inferred boolean values
-      if opt.no_empty then
-        return nil
-      end
-      v = ""
-    elseif not opt.plain and (v == "true" or v == "false") then
+      if opt.no_empty then return nil end
+      v = ''
+    elseif not opt.plain and (v == 'true' or v == 'false') then
       -- Cast to boolean
-      v = v == "true"
+      v = v == 'true'
     end
 
-    if opt.expand then
-      v = vim.fn.expand(v)
-    end
+    if opt.expand then v = vim.fn.expand(v) end
 
     return v
   end)
@@ -76,26 +66,24 @@ end
 
 ---@class FlagValueMap : diffview.Object
 ---@field map table<string, string[]>
-local FlagValueMap = oop.create_class("FlagValueMap")
+local FlagValueMap = oop.create_class('FlagValueMap')
 
 ---FlagValueMap constructor
-function FlagValueMap:init()
-  self.map = {}
-end
+function FlagValueMap:init() self.map = {} end
 
 ---@param flag_synonyms string[]
 ---@param producer? string[]|fun(name_lead: string, arg_lead: string): string[]
 function FlagValueMap:put(flag_synonyms, producer)
   for _, flag in ipairs(flag_synonyms) do
     local char = flag:sub(1, 1)
-    if char ~= "-" and char ~= "+" then
+    if char ~= '-' and char ~= '+' then
       if #flag > 1 then
-        flag = "--" .. flag
+        flag = '--' .. flag
       else
-        flag = "-" .. flag
+        flag = '-' .. flag
       end
     end
-    self.map[flag] = producer or { "true", "false" }
+    self.map[flag] = producer or { 'true', 'false' }
     self.map[#self.map + 1] = flag
   end
 end
@@ -105,17 +93,17 @@ end
 ---@return string[]
 function FlagValueMap:get(flag_name)
   local char = flag_name:sub(1, 1)
-  if char ~= "-" and char ~= "+" then
+  if char ~= '-' and char ~= '+' then
     if #flag_name > 1 then
-      flag_name = "--" .. flag_name
+      flag_name = '--' .. flag_name
     else
-      flag_name = "-" .. flag_name
+      flag_name = '-' .. flag_name
     end
   end
 
-  if type(self.map[flag_name]) == "function" then
+  if type(self.map[flag_name]) == 'function' then
     local is_short = utils.str_match(flag_name, short_flag_pat) ~= nil
-    return self.map[flag_name](flag_name .. (not is_short and "=" or ""), "")
+    return self.map[flag_name](flag_name .. (not is_short and '=' or ''), '')
   end
 
   return self.map[flag_name]
@@ -123,40 +111,32 @@ end
 
 ---Get a list of all flag names.
 ---@return string[]
-function FlagValueMap:get_all_names()
-  return utils.vec_slice(self.map)
-end
+function FlagValueMap:get_all_names() return utils.vec_slice(self.map) end
 
 ---@param arg_lead string
 ---@return string[]?
 function FlagValueMap:get_completion(arg_lead)
-  arg_lead = arg_lead or ""
+  arg_lead = arg_lead or ''
   local name
   local is_short = utils.str_match(arg_lead, short_flag_pat) ~= nil
 
   if is_short then
     name = arg_lead:sub(1, 2)
-    arg_lead = arg_lead:match("..=?(.*)") or ""
+    arg_lead = arg_lead:match('..=?(.*)') or ''
   else
-    name = arg_lead:gsub("=.*", "")
-    arg_lead = arg_lead:match("=(.*)") or ""
+    name = arg_lead:gsub('=.*', '')
+    arg_lead = arg_lead:match('=(.*)') or ''
   end
 
-  local name_lead = name .. (not is_short and "=" or "")
+  local name_lead = name .. (not is_short and '=' or '')
   local values = self.map[name]
-  if type(values) == "function" then
-    values = values(name_lead, arg_lead)
-  end
-  if not values then
-    return nil
-  end
+  if type(values) == 'function' then values = values(name_lead, arg_lead) end
+  if not values then return nil end
 
   local items = {}
   for _, v in ipairs(values) do
     local e_lead, _ = vim.pesc(arg_lead)
-    if v:match(e_lead) then
-      items[#items + 1] = name_lead .. v
-    end
+    if v:match(e_lead) then items[#items + 1] = name_lead .. v end
   end
 
   return items
@@ -171,7 +151,7 @@ function M.parse(args)
   local post_args = {}
 
   for i, arg in ipairs(args) do
-    if arg == "--" then
+    if arg == '--' then
       for j = i + 1, #args do
         table.insert(post_args, args[j])
       end
@@ -181,11 +161,9 @@ function M.parse(args)
     local flag, value
     flag, value = utils.str_match(arg, short_flag_pat)
     if flag then
-      value = (value == "") and "true" or value
+      value = (value == '') and 'true' or value
 
-      if not flags[flag] then
-        flags[flag] = {}
-      end
+      if not flags[flag] then flags[flag] = {} end
 
       table.insert(flags[flag], value)
       goto continue
@@ -193,11 +171,9 @@ function M.parse(args)
 
     flag, value = utils.str_match(arg, long_flag_pat)
     if flag then
-      value = (value == "") and "true" or value
+      value = (value == '') and 'true' or value
 
-      if not flags[flag] then
-        flags[flag] = {}
-      end
+      if not flags[flag] then flags[flag] = {} end
 
       table.insert(flags[flag], value)
       goto continue
@@ -215,19 +191,15 @@ end
 ---@param arg string
 ---@return string range, string command
 function M.split_ex_range(arg)
-  local idx = arg:match(".*()%A")
-  if not idx then
-    return "", arg
-  end
+  local idx = arg:match('.*()%A')
+  if not idx then return '', arg end
 
   local slice = arg:sub(idx or 1)
   idx = slice:match("[^']()%a")
 
-  if idx then
-    return arg:sub(1, (#arg - #slice) + idx - 1), slice:sub(idx)
-  end
+  if idx then return arg:sub(1, (#arg - #slice) + idx - 1), slice:sub(idx) end
 
-  return arg, ""
+  return arg, ''
 end
 
 ---@class CmdLineContext
@@ -252,7 +224,7 @@ end
 ---@param opt? arg_parser.scan.Opt
 ---@return CmdLineContext
 function M.scan(cmd_line, opt)
-  opt = vim.tbl_extend("keep", opt or {}, {
+  opt = vim.tbl_extend('keep', opt or {}, {
     cur_pos = #cmd_line + 1,
     allow_quoted = true,
     allow_ex_range = false,
@@ -265,7 +237,7 @@ function M.scan(cmd_line, opt)
   local argidx
   local between = false
   local cur_quote, lead_quote
-  local arg, raw_arg = "", ""
+  local arg, raw_arg = '', ''
 
   local h, i = -1, 1
 
@@ -279,7 +251,7 @@ function M.scan(cmd_line, opt)
       if h < opt.cur_pos then between = true end
     end
 
-    if char == "\\" then
+    if char == '\\' then
       arg = arg .. char
       raw_arg = raw_arg .. char
       if i < #cmd_line then
@@ -300,20 +272,16 @@ function M.scan(cmd_line, opt)
       cur_quote = char
       raw_arg = raw_arg .. char
       h = i
-    elseif char:match("%s") then
-      if arg ~= "" then
+    elseif char:match('%s') then
+      if arg ~= '' then
         table.insert(args, arg)
-        if arg == "--" and i - 1 < #cmd_line then
-          divideridx = #args
-        end
+        if arg == '--' and i - 1 < #cmd_line then divideridx = #args end
       end
-      if raw_arg ~= "" then
-        table.insert(raw_args, raw_arg)
-      end
-      arg = ""
-      raw_arg = ""
+      if raw_arg ~= '' then table.insert(raw_args, raw_arg) end
+      arg = ''
+      raw_arg = ''
       -- Skip whitespace
-      i = i + cmd_line:sub(i, -1):match("^%s+()") - 2
+      i = i + cmd_line:sub(i, -1):match('^%s+()') - 2
     else
       arg = arg .. char
       raw_arg = raw_arg .. char
@@ -331,16 +299,12 @@ function M.scan(cmd_line, opt)
       lead_quote = cur_quote
     end
 
-    if arg == "--" and cmd_line:sub(#cmd_line, #cmd_line) ~= "-" then
-      divideridx = #args
-    end
+    if arg == '--' and cmd_line:sub(#cmd_line, #cmd_line) ~= '-' then divideridx = #args end
   end
 
   if not argidx then
     argidx = #args
-    if cmd_line:sub(#cmd_line, #cmd_line):match("%s") then
-      argidx = argidx + 1
-    end
+    if cmd_line:sub(#cmd_line, #cmd_line):match('%s') then argidx = argidx + 1 end
   end
 
   local range
@@ -351,7 +315,7 @@ function M.scan(cmd_line, opt)
       _, raw_args[1] = M.split_ex_range(raw_args[1])
     end
 
-    if args[1] == "" then
+    if args[1] == '' then
       table.remove(args, 1)
       table.remove(raw_args, 1)
       argidx = math.max(argidx - 1, 1)
@@ -363,12 +327,12 @@ function M.scan(cmd_line, opt)
     cmd_line = cmd_line,
     args = args,
     raw_args = raw_args,
-    arg_lead = arg_lead or "",
+    arg_lead = arg_lead or '',
     lead_quote = lead_quote,
     cur_pos = opt.cur_pos,
     argidx = argidx,
     divideridx = divideridx,
-    range = range ~= "" and range or nil,
+    range = range ~= '' and range or nil,
     between = between,
   }
 end
@@ -380,9 +344,7 @@ end
 function M.filter_candidates(arg_lead, candidates)
   arg_lead, _ = vim.pesc(arg_lead)
 
-  return vim.tbl_filter(function(item)
-    return item:match(arg_lead)
-  end, candidates)
+  return vim.tbl_filter(function(item) return item:match(arg_lead) end, candidates)
 end
 
 ---Process completion candidates.
@@ -393,37 +355,31 @@ end
 function M.process_candidates(candidates, ctx, input_cmp)
   if not candidates then return {} end
 
-  local cmd_lead = ""
-  local ex_lead = (ctx.lead_quote or "") .. ctx.arg_lead
+  local cmd_lead = ''
+  local ex_lead = (ctx.lead_quote or '') .. ctx.arg_lead
 
-  if ctx.arg_lead and ctx.arg_lead:find("[^\\]%s") then
-    ex_lead = (ctx.lead_quote or "") .. ctx.arg_lead:match(".*[^\\]%s(.*)")
+  if ctx.arg_lead and ctx.arg_lead:find('[^\\]%s') then
+    ex_lead = (ctx.lead_quote or '') .. ctx.arg_lead:match('.*[^\\]%s(.*)')
   end
 
-  if input_cmp then
-    cmd_lead = ctx.cmd_line:sub(1, ctx.cur_pos - #ex_lead)
-  end
+  if input_cmp then cmd_lead = ctx.cmd_line:sub(1, ctx.cur_pos - #ex_lead) end
 
   local ret = vim.tbl_map(function(v)
-    if v:match("^" .. vim.pesc(ctx.arg_lead)) then
+    if v:match('^' .. vim.pesc(ctx.arg_lead)) then
       return cmd_lead .. ex_lead .. v:sub(#ctx.arg_lead + 1)
     elseif input_cmp then
       return cmd_lead .. v
     end
 
-    return (ctx.lead_quote or "") .. v
+    return (ctx.lead_quote or '') .. v
   end, candidates)
 
   return M.filter_candidates(cmd_lead .. ex_lead, ret)
 end
 
 function M.ambiguous_bool(value, default, truthy, falsy)
-  if vim.tbl_contains(truthy, value) then
-    return true
-  end
-  if vim.tbl_contains(falsy, value) then
-    return false
-  end
+  if vim.tbl_contains(truthy, value) then return true end
+  if vim.tbl_contains(falsy, value) then return false end
   return default
 end
 

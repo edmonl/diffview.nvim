@@ -1,5 +1,5 @@
-local assert = require("luassert")
-local async = require("diffview.async")
+local assert = require('luassert')
+local async = require('diffview.async')
 
 local await, pawait = async.await, async.pawait
 
@@ -23,9 +23,7 @@ function M.async_test(test_func)
     local ok, err = pawait(afunc(...))
     await(async.scheduler())
 
-    if not ok then
-      error(err)
-    end
+    if not ok then error(err) end
   end
 end
 

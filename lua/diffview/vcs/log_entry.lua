@@ -1,8 +1,8 @@
-local lazy = require("diffview.lazy")
-local oop = require("diffview.oop")
+local lazy = require('diffview.lazy')
+local oop = require('diffview.oop')
 
-local FileEntry = lazy.access("diffview.scene.file_entry", "FileEntry") ---@type FileEntry
-local utils = lazy.require("diffview.utils") ---@module "diffview.utils"
+local FileEntry = lazy.access('diffview.scene.file_entry', 'FileEntry') ---@type FileEntry
+local utils = lazy.require('diffview.utils') ---@module "diffview.utils"
 
 local M = {}
 
@@ -16,7 +16,7 @@ local M = {}
 ---@field single_file boolean
 ---@field folded boolean
 ---@field nulled boolean
-local LogEntry = oop.create_class("LogEntry")
+local LogEntry = oop.create_class('LogEntry')
 
 function LogEntry:init(opt)
   self.path_args = opt.path_args
@@ -44,7 +44,7 @@ function LogEntry:update_status()
       missing_status = missing_status + 1
     else
       if self.status and file.status ~= self.status then
-        self.status = "M"
+        self.status = 'M'
         return
       elseif self.status ~= file.status then
         self.status = file.status
@@ -52,9 +52,7 @@ function LogEntry:update_status()
     end
   end
 
-  if missing_status < #self.files and not self.status then
-    self.status = "X"
-  end
+  if missing_status < #self.files and not self.status then self.status = 'X' end
 end
 
 function LogEntry:update_stats()
@@ -70,9 +68,7 @@ function LogEntry:update_stats()
     end
   end
 
-  if missing_stats == #self.files then
-    self.stats = nil
-  end
+  if missing_stats == #self.files then self.stats = nil end
 end
 
 ---@param path string
@@ -81,9 +77,7 @@ function LogEntry:get_diff(path)
   if not self.commit.diff then return nil end
 
   for _, diff_entry in ipairs(self.commit.diff) do
-    if path == (diff_entry.path_new or diff_entry.path_old) then
-      return diff_entry
-    end
+    if path == (diff_entry.path_new or diff_entry.path_old) then return diff_entry end
   end
 end
 
@@ -93,12 +87,10 @@ end
 function LogEntry.new_null_entry(adapter, opt)
   opt = opt or {}
 
-  return LogEntry(
-    vim.tbl_extend("force", opt, {
-      nulled = true,
-      files = { FileEntry.new_null_entry(adapter) },
-    })
-  )
+  return LogEntry(vim.tbl_extend('force', opt, {
+    nulled = true,
+    files = { FileEntry.new_null_entry(adapter) },
+  }))
 end
 
 M.LogEntry = LogEntry

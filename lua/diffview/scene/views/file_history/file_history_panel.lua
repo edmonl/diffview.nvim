@@ -1,19 +1,19 @@
-local async = require("diffview.async")
-local lazy = require("diffview.lazy")
+local async = require('diffview.async')
+local lazy = require('diffview.lazy')
 
-local FHOptionPanel = lazy.access("diffview.scene.views.file_history.option_panel", "FHOptionPanel") ---@type FHOptionPanel|LazyModule
-local JobStatus = lazy.access("diffview.vcs.utils", "JobStatus") ---@type JobStatus|LazyModule
-local LogEntry = lazy.access("diffview.vcs.log_entry", "LogEntry") ---@type LogEntry|LazyModule
-local Panel = lazy.access("diffview.ui.panel", "Panel") ---@type Panel|LazyModule
-local PerfTimer = lazy.access("diffview.perf", "PerfTimer") ---@type PerfTimer|LazyModule
-local Signal = lazy.access("diffview.control", "Signal") ---@type Signal|LazyModule
-local WorkPool = lazy.access("diffview.control", "WorkPool") ---@type WorkPool|LazyModule
-local config = lazy.require("diffview.config") ---@module "diffview.config"
-local debounce = lazy.require("diffview.debounce") ---@module "diffview.debounce"
-local oop = lazy.require("diffview.oop") ---@module "diffview.oop"
-local panel_renderer = lazy.require("diffview.scene.views.file_history.render") ---@module "diffview.scene.views.file_history.render"
-local renderer = lazy.require("diffview.renderer") ---@module "diffview.renderer"
-local utils = lazy.require("diffview.utils") ---@module "diffview.utils"
+local FHOptionPanel = lazy.access('diffview.scene.views.file_history.option_panel', 'FHOptionPanel') ---@type FHOptionPanel|LazyModule
+local JobStatus = lazy.access('diffview.vcs.utils', 'JobStatus') ---@type JobStatus|LazyModule
+local LogEntry = lazy.access('diffview.vcs.log_entry', 'LogEntry') ---@type LogEntry|LazyModule
+local Panel = lazy.access('diffview.ui.panel', 'Panel') ---@type Panel|LazyModule
+local PerfTimer = lazy.access('diffview.perf', 'PerfTimer') ---@type PerfTimer|LazyModule
+local Signal = lazy.access('diffview.control', 'Signal') ---@type Signal|LazyModule
+local WorkPool = lazy.access('diffview.control', 'WorkPool') ---@type WorkPool|LazyModule
+local config = lazy.require('diffview.config') ---@module "diffview.config"
+local debounce = lazy.require('diffview.debounce') ---@module "diffview.debounce"
+local oop = lazy.require('diffview.oop') ---@module "diffview.oop"
+local panel_renderer = lazy.require('diffview.scene.views.file_history.render') ---@module "diffview.scene.views.file_history.render"
+local renderer = lazy.require('diffview.renderer') ---@module "diffview.renderer"
+local utils = lazy.require('diffview.utils') ---@module "diffview.utils"
 
 local api = vim.api
 local await = async.await
@@ -23,9 +23,9 @@ local logger = DiffviewGlobal.logger
 local M = {}
 
 ---@type PerfTimer
-local perf_render = PerfTimer("[FileHistoryPanel] render")
+local perf_render = PerfTimer('[FileHistoryPanel] render')
 ---@type PerfTimer
-local perf_update = PerfTimer("[FileHistoryPanel] update")
+local perf_update = PerfTimer('[FileHistoryPanel] update')
 
 ---@alias FileHistoryPanel.CurItem { [1]: LogEntry, [2]: FileEntry }
 
@@ -46,23 +46,23 @@ local perf_update = PerfTimer("[FileHistoryPanel] update")
 ---@field help_mapping string
 ---@field components CompStruct
 ---@field constrain_cursor function
-local FileHistoryPanel = oop.create_class("FileHistoryPanel", Panel.__get())
+local FileHistoryPanel = oop.create_class('FileHistoryPanel', Panel.__get())
 
-FileHistoryPanel.winopts = vim.tbl_extend("force", Panel.winopts, {
+FileHistoryPanel.winopts = vim.tbl_extend('force', Panel.winopts, {
   cursorline = true,
   winhl = {
-    "EndOfBuffer:DiffviewEndOfBuffer",
-    "Normal:DiffviewNormal",
-    "CursorLine:DiffviewCursorLine",
-    "WinSeparator:DiffviewWinSeparator",
-    "SignColumn:DiffviewNormal",
-    "StatusLine:DiffviewStatusLine",
-    "StatusLineNC:DiffviewStatuslineNC",
+    'EndOfBuffer:DiffviewEndOfBuffer',
+    'Normal:DiffviewNormal',
+    'CursorLine:DiffviewCursorLine',
+    'WinSeparator:DiffviewWinSeparator',
+    'SignColumn:DiffviewNormal',
+    'StatusLine:DiffviewStatusLine',
+    'StatusLineNC:DiffviewStatuslineNC',
   },
 })
 
-FileHistoryPanel.bufopts = vim.tbl_extend("force", Panel.bufopts, {
-  filetype = "DiffviewFileHistory",
+FileHistoryPanel.bufopts = vim.tbl_extend('force', Panel.bufopts, {
+  filetype = 'DiffviewFileHistory',
 })
 
 ---@class FileHistoryPanel.init.Opt
@@ -78,7 +78,7 @@ function FileHistoryPanel:init(opt)
 
   self:super({
     config = conf.file_history_panel.win_config,
-    bufname = "DiffviewFileHistoryPanel",
+    bufname = 'DiffviewFileHistoryPanel',
   })
 
   self.parent = opt.parent
@@ -92,28 +92,26 @@ function FileHistoryPanel:init(opt)
   self.option_panel = FHOptionPanel(self, self.adapter.flags)
   self.log_options = {
     single_file = vim.tbl_extend(
-      "force",
+      'force',
       conf.file_history_panel.log_options[self.adapter.config_key].single_file,
       opt.log_options
     ),
     multi_file = vim.tbl_extend(
-      "force",
+      'force',
       conf.file_history_panel.log_options[self.adapter.config_key].multi_file,
       opt.log_options
     ),
   }
 
-  self:on_autocmd("BufNew", {
-    callback = function()
-      self:setup_buffer()
-    end,
+  self:on_autocmd('BufNew', {
+    callback = function() self:setup_buffer() end,
   })
 end
 
 ---@override
 function FileHistoryPanel:open()
   FileHistoryPanel.super_class.open(self)
-  vim.cmd("wincmd =")
+  vim.cmd('wincmd =')
 end
 
 ---@override
@@ -134,9 +132,7 @@ FileHistoryPanel.destroy = async.sync_void(function(self)
   self.option_panel = nil
   self.render_data:destroy()
 
-  if self.components then
-    renderer.destroy_comp_struct(self.components)
-  end
+  if self.components then renderer.destroy_comp_struct(self.components) end
 
   FileHistoryPanel.super_class.destroy(self)
 end)
@@ -146,7 +142,7 @@ function FileHistoryPanel:setup_buffer()
   local default_opt = { silent = true, nowait = true, buffer = self.bufid }
 
   for _, mapping in ipairs(conf.keymaps.file_history_panel) do
-    local opt = vim.tbl_extend("force", default_opt, mapping[4] or {}, { buffer = self.bufid })
+    local opt = vim.tbl_extend('force', default_opt, mapping[4] or {}, { buffer = self.bufid })
     vim.keymap.set(mapping[1], mapping[2], mapping[3], opt)
   end
 
@@ -159,29 +155,25 @@ end
 
 function FileHistoryPanel:update_components()
   self.render_data:destroy()
-  if self.components then
-    renderer.destroy_comp_struct(self.components)
-  end
+  if self.components then renderer.destroy_comp_struct(self.components) end
 
-  local entry_schema = { name = "entries" }
+  local entry_schema = { name = 'entries' }
   for i, entry in ipairs(utils.vec_slice(self.entries)) do
-    if self.updating and i > 128 then
-      break
-    end
+    if self.updating and i > 128 then break end
     table.insert(entry_schema, {
-      name = "entry",
+      name = 'entry',
       context = entry,
-      { name = "commit" },
-      { name = "files" },
+      { name = 'commit' },
+      { name = 'files' },
     })
   end
 
   ---@type CompStruct
   self.components = self.render_data:create_component({
-    { name = "header" },
+    { name = 'header' },
     {
-      name = "log",
-      { name = "title" },
+      name = 'log',
+      { name = 'title' },
       entry_schema,
     },
   })
@@ -211,20 +203,17 @@ FileHistoryPanel.update_entries = async.wrap(function(self, callback)
 
   self:sync()
 
-  local render = debounce.throttle_render(
-    15,
-    function()
-      if self.shutdown:check() then return end
-      if not self:cur_file() then
-        self:update_components()
-        self.parent:next_item()
-      else
-        self:sync()
-      end
-
-      vim.cmd("redraw")
+  local render = debounce.throttle_render(15, function()
+    if self.shutdown:check() then return end
+    if not self:cur_file() then
+      self:update_components()
+      self.parent:next_item()
+    else
+      self:sync()
     end
-  )
+
+    vim.cmd('redraw')
+  end)
 
   local ret = {}
 
@@ -239,29 +228,27 @@ FileHistoryPanel.update_entries = async.wrap(function(self, callback)
     local status, entry, msg = unpack(item, 1, 3)
 
     if status == JobStatus.ERROR then
-      utils.err(fmt("Updating file history failed! Error message: %s", msg), true)
+      utils.err(fmt('Updating file history failed! Error message: %s', msg), true)
       ret = { nil, JobStatus.ERROR, msg }
       break
     elseif status == JobStatus.SUCCESS then
       ret = { self.entries, status }
       perf_update:time()
       logger:fmt_info(
-        "[FileHistory] Completed update for %d entries successfully (%.3f ms).",
+        '[FileHistory] Completed update for %d entries successfully (%.3f ms).',
         #self.entries,
         perf_update.final_time
       )
     elseif status == JobStatus.PROGRESS then
       ---@cast entry -?
       local was_empty = #self.entries == 0
-      self.entries[#self.entries+1] = entry
+      self.entries[#self.entries + 1] = entry
 
-      if was_empty then
-        self.single_file = self.entries[1].single_file
-      end
+      if was_empty then self.single_file = self.entries[1].single_file end
 
       render()
     else
-      error("Unexpected state!")
+      error('Unexpected state!')
     end
   end
 
@@ -271,7 +258,7 @@ FileHistoryPanel.update_entries = async.wrap(function(self, callback)
   if not self.shutdown:check() then
     self:sync()
     self.option_panel:sync()
-    vim.cmd("redraw")
+    vim.cmd('redraw')
   end
 
   checkout:send()
@@ -309,9 +296,7 @@ end
 function FileHistoryPanel:find_entry(file)
   for _, entry in ipairs(self.entries) do
     for _, f in ipairs(entry.files) do
-      if f == file then
-        return entry
-      end
+      if f == file then return entry end
     end
   end
 end
@@ -325,12 +310,10 @@ function FileHistoryPanel:get_item_at_cursor()
   local line = cursor[1]
   local comp = self.components.comp:get_comp_on_line(line)
 
-  if comp and (comp.name == "commit" or comp.name == "files") then
+  if comp and (comp.name == 'commit' or comp.name == 'files') then
     local entry = comp.parent.context --[[@as table ]]
 
-    if comp.name == "files" then
-      return entry.files[line - comp.lstart]
-    end
+    if comp.name == 'files' then return entry.files[line - comp.lstart] end
 
     return entry
   end
@@ -351,15 +334,11 @@ end
 
 ---@param new_item FileHistoryPanel.CurItem
 function FileHistoryPanel:set_cur_item(new_item)
-  if self.cur_item[2] then
-    self.cur_item[2]:set_active(false)
-  end
+  if self.cur_item[2] then self.cur_item[2]:set_active(false) end
 
   self.cur_item = new_item
 
-  if self.cur_item and self.cur_item[2] then
-    self.cur_item[2]:set_active(true)
-  end
+  if self.cur_item and self.cur_item[2] then self.cur_item[2]:set_active(true) end
 end
 
 function FileHistoryPanel:set_entry_from_file(item)
@@ -370,15 +349,11 @@ function FileHistoryPanel:set_entry_from_file(item)
   else
     local entry = self:find_entry(file)
 
-    if entry then
-      self:set_cur_item({ entry, file })
-    end
+    if entry then self:set_cur_item({ entry, file }) end
   end
 end
 
-function FileHistoryPanel:cur_file()
-  return self.cur_item[2]
-end
+function FileHistoryPanel:cur_file() return self.cur_item[2] end
 
 ---@private
 ---@param entry_idx integer
@@ -428,9 +403,7 @@ function FileHistoryPanel:set_file_by_offset(offset)
       local next_entry, next_file = self:_get_entry_by_file_offset(entry_idx, file_idx, offset)
       self:set_cur_item({ next_entry, next_file })
 
-      if next_entry ~= entry then
-        self:set_entry_fold(entry, false)
-      end
+      if next_entry ~= entry then self:set_entry_fold(entry, false) end
 
       return self.cur_item[2]
     end
@@ -440,13 +413,9 @@ function FileHistoryPanel:set_file_by_offset(offset)
   end
 end
 
-function FileHistoryPanel:prev_file()
-  return self:set_file_by_offset(-vim.v.count1)
-end
+function FileHistoryPanel:prev_file() return self:set_file_by_offset(-vim.v.count1) end
 
-function FileHistoryPanel:next_file()
-  return self:set_file_by_offset(vim.v.count1)
-end
+function FileHistoryPanel:next_file() return self:set_file_by_offset(vim.v.count1) end
 
 ---@param item LogEntry|FileEntry
 function FileHistoryPanel:highlight_item(item)
@@ -527,9 +496,7 @@ function FileHistoryPanel:set_entry_fold(entry, open)
 end
 
 ---@param entry LogEntry
-function FileHistoryPanel:toggle_entry_fold(entry)
-  self:set_entry_fold(entry, entry.folded)
-end
+function FileHistoryPanel:toggle_entry_fold(entry) self:set_entry_fold(entry, entry.folded) end
 
 function FileHistoryPanel:render()
   perf_render:reset()

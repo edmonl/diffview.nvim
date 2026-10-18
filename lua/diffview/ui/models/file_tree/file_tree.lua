@@ -1,7 +1,7 @@
-local oop = require("diffview.oop")
-local utils = require("diffview.utils")
-local Node = require("diffview.ui.models.file_tree.node").Node
-local Model = require("diffview.ui.model").Model
+local oop = require('diffview.oop')
+local utils = require('diffview.utils')
+local Node = require('diffview.ui.models.file_tree.node').Node
+local Model = require('diffview.ui.model').Model
 
 local pl = utils.path
 
@@ -17,12 +17,12 @@ local M = {}
 
 ---@class FileTree : Model
 ---@field root Node
-local FileTree = oop.create_class("FileTree", Model)
+local FileTree = oop.create_class('FileTree', Model)
 
 ---FileTree constructor
 ---@param files FileEntry[]?
 function FileTree:init(files)
-  self.root = Node("__ROOT__")
+  self.root = Node('__ROOT__')
 
   for _, file in ipairs(files or {}) do
     self:add_file_entry(file)
@@ -40,9 +40,7 @@ function FileTree:add_file_entry(file)
   for i = 1, #parts - 1 do
     local name = parts[i]
 
-    if i > 1 then
-      path = pl:join(path, parts[i])
-    end
+    if i > 1 then path = pl:join(path, parts[i]) end
 
     if not cur_node.children[name] then
       ---@type DirData
@@ -51,7 +49,7 @@ function FileTree:add_file_entry(file)
         path = path,
         kind = file.kind,
         collapsed = false,
-        status = " ", -- updated later in FileTree:update_statuses()
+        status = ' ', -- updated later in FileTree:update_statuses()
       }
       cur_node = cur_node:add_child(Node(name, dir_data))
     else
@@ -66,21 +64,17 @@ end
 ---@param b string
 ---@return string
 local function combine_statuses(a, b)
-  if a == " " or a == "?" or a == "!" or a == b then
-    return b
-  end
+  if a == ' ' or a == '?' or a == '!' or a == b then return b end
 
-  return "M"
+  return 'M'
 end
 
 function FileTree:update_statuses()
   ---@return string the node's status
   local function recurse(node)
-    if not node:has_children() then
-      return node.data.status
-    end
+    if not node:has_children() then return node.data.status end
 
-    local parent_status = " "
+    local parent_status = ' '
 
     for _, child in ipairs(node.children) do
       local child_status = recurse(child)
@@ -106,7 +100,7 @@ function FileTree:create_comp_schema(data)
   ---@param node Node
   local function recurse(parent, node)
     if not node:has_children() then
-      parent[#parent + 1] = { name = "file", context = node.data }
+      parent[#parent + 1] = { name = 'file', context = node.data }
       return
     end
 
@@ -129,11 +123,11 @@ function FileTree:create_comp_schema(data)
       end
     end
 
-    local items = { name = "items" }
+    local items = { name = 'items' }
     local struct = {
-      name = "directory",
+      name = 'directory',
       context = dir_data,
-      { name = "dir_name" },
+      { name = 'dir_name' },
       items,
     }
     parent[#parent + 1] = struct

@@ -1,27 +1,27 @@
-local AsyncListStream = require("diffview.stream").AsyncListStream
-local Commit = require("diffview.vcs.adapters.hg.commit").HgCommit
-local Diff2Hor = require("diffview.scene.layouts.diff_2_hor").Diff2Hor
-local FileEntry = require("diffview.scene.file_entry").FileEntry
-local FlagOption = require("diffview.vcs.flag_option").FlagOption
+local AsyncListStream = require('diffview.stream').AsyncListStream
+local Commit = require('diffview.vcs.adapters.hg.commit').HgCommit
+local Diff2Hor = require('diffview.scene.layouts.diff_2_hor').Diff2Hor
+local FileEntry = require('diffview.scene.file_entry').FileEntry
+local FlagOption = require('diffview.vcs.flag_option').FlagOption
 local HgRev = require('diffview.vcs.adapters.hg.rev').HgRev
-local Job = require("diffview.job").Job
-local MultiJob = require("diffview.multi_job").MultiJob
+local Job = require('diffview.job').Job
+local MultiJob = require('diffview.multi_job').MultiJob
 local JobStatus = require('diffview.vcs.utils').JobStatus
-local LogEntry = require("diffview.vcs.log_entry").LogEntry
-local RevType = require("diffview.vcs.rev").RevType
+local LogEntry = require('diffview.vcs.log_entry').LogEntry
+local RevType = require('diffview.vcs.rev').RevType
 local VCSAdapter = require('diffview.vcs.adapter').VCSAdapter
-local arg_parser = require("diffview.arg_parser")
-local async = require("diffview.async")
+local arg_parser = require('diffview.arg_parser')
+local async = require('diffview.async')
 local config = require('diffview.config')
 local lazy = require('diffview.lazy')
 local oop = require('diffview.oop')
 local utils = require('diffview.utils')
-local vcs_utils = require("diffview.vcs.utils")
+local vcs_utils = require('diffview.vcs.utils')
 
 local await, pawait = async.await, async.pawait
 local fmt = string.format
 local logger = DiffviewGlobal.logger
-local pl = lazy.access(utils, "path") ---@type PathLib
+local pl = lazy.access(utils, 'path') ---@type PathLib
 local uv = vim.loop
 
 local M = {}
@@ -30,7 +30,7 @@ local M = {}
 local HgAdapter = oop.create_class('HgAdapter', VCSAdapter)
 
 HgAdapter.Rev = HgRev
-HgAdapter.config_key = "hg"
+HgAdapter.config_key = 'hg'
 HgAdapter.bootstrap = {
   done = false,
   ok = false,
@@ -39,7 +39,7 @@ HgAdapter.bootstrap = {
     major = 5,
     minor = 4,
     patch = 0,
-  }
+  },
 }
 
 function HgAdapter.run_bootstrap()
@@ -50,7 +50,7 @@ function HgAdapter.run_bootstrap()
   local function err(msg)
     if msg then
       bs.err = msg
-      logger:error("[HgAdapter] " .. bs.err)
+      logger:error('[HgAdapter] ' .. bs.err)
     end
   end
 
@@ -58,17 +58,13 @@ function HgAdapter.run_bootstrap()
     return err(fmt("Configured `hg_cmd` is not executable: '%s'", hg_cmd[1]))
   end
 
-  local out = utils.job(utils.flatten({ hg_cmd, "version" }))
-  local version = out[1] and out[1]:match("Mercurial .*%(version (%S*)%)") or nil
-  if not version then
-    return err("Could not get Mercurial version!")
-  end
+  local out = utils.job(utils.flatten({ hg_cmd, 'version' }))
+  local version = out[1] and out[1]:match('Mercurial .*%(version (%S*)%)') or nil
+  if not version then return err('Could not get Mercurial version!') end
 
   -- Parse version string
-  local major, minor, patch = version:match("(%d+)%.?(%d*)%.?(%d*)")
-  if not major then
-    return err(string.format("Could not parse Mercurial version: %s!", version))
-  end
+  local major, minor, patch = version:match('(%d+)%.?(%d*)%.?(%d*)')
+  if not major then return err(string.format('Could not parse Mercurial version: %s!', version)) end
 
   local v, target = bs.version, bs.target_version
   v.major = tonumber(major)
@@ -76,16 +72,18 @@ function HgAdapter.run_bootstrap()
   v.patch = tonumber(patch) or 0
 
   bs.version_string = version
-  bs.target_version_string = fmt("%d.%d.%d", target.major, target.minor, target.patch)
+  bs.target_version_string = fmt('%d.%d.%d', target.major, target.minor, target.patch)
 
   local version_ok = vcs_utils.check_semver(v, target)
   if not version_ok then
-    return err(string.format(
-      "Mercurial version is outdated! Some functionality might not work as expected, "
-        .. "or not at all! Current: %s, wanted: %s",
-      bs.version_string,
-      bs.target_version_string
-    ))
+    return err(
+      string.format(
+        'Mercurial version is outdated! Some functionality might not work as expected, '
+          .. 'or not at all! Current: %s, wanted: %s',
+        bs.version_string,
+        bs.target_version_string
+      )
+    )
   end
 
   bs.ok = true
@@ -96,13 +94,15 @@ function HgAdapter.get_repo_paths(path_args, cpath)
   local top_indicators = {}
 
   for _, path_arg in ipairs(path_args) do
-    for _, path in ipairs(pl:vim_expand(path_arg, false, true) --[[@as string[] ]]) do
+    for _, path in
+      ipairs(pl:vim_expand(path_arg, false, true) --[[@as string[] ]])
+    do
       path = pl:readlink(path) or path
       table.insert(paths, path)
     end
   end
 
-  local cfile = pl:vim_expand("%")
+  local cfile = pl:vim_expand('%')
   cfile = pl:readlink(cfile) or cfile
 
   for _, path in ipairs(paths) do
@@ -110,15 +110,12 @@ function HgAdapter.get_repo_paths(path_args, cpath)
     break
   end
 
-  table.insert(top_indicators, cpath and pl:realpath(cpath) or (
-    vim.bo.buftype == ""
-    and pl:absolute(cfile)
-    or nil
-  ))
+  table.insert(
+    top_indicators,
+    cpath and pl:realpath(cpath) or (vim.bo.buftype == '' and pl:absolute(cfile) or nil)
+  )
 
-  if not cpath then
-    table.insert(top_indicators, pl:realpath("."))
-  end
+  if not cpath then table.insert(top_indicators, pl:realpath('.')) end
 
   return paths, top_indicators
 end
@@ -127,10 +124,8 @@ end
 ---@param path string
 ---@return string?
 local function get_toplevel(path)
-  local out, code = utils.job(utils.flatten({config.get_config().hg_cmd, {"root"}}), path)
-  if code ~= 0 then
-    return nil
-  end
+  local out, code = utils.job(utils.flatten({ config.get_config().hg_cmd, { 'root' } }), path)
+  if code ~= 0 then return nil end
   return out[1] and vim.trim(out[1])
 end
 
@@ -138,29 +133,22 @@ function HgAdapter.find_toplevel(top_indicators)
   local toplevel
 
   for _, p in ipairs(top_indicators) do
-    if not pl:is_dir(p) then
-      p = pl:parent(p)
-    end
+    if not pl:is_dir(p) then p = pl:parent(p) end
 
     if p and pl:readable(p) then
       toplevel = get_toplevel(p)
-      if toplevel then
-        return nil, toplevel
-      end
+      if toplevel then return nil, toplevel end
     end
   end
 
   local msg_paths = vim.tbl_map(function(v)
-    local rel_path = pl:relative(v, ".")
-    return utils.str_quote(rel_path == "" and "." or rel_path)
+    local rel_path = pl:relative(v, '.')
+    return utils.str_quote(rel_path == '' and '.' or rel_path)
   end, top_indicators)
 
-  local err = fmt(
-    "Path not a mercurial repo (or any parent): %s",
-    table.concat(msg_paths, ", ")
-  )
+  local err = fmt('Path not a mercurial repo (or any parent): %s', table.concat(msg_paths, ', '))
 
-  return err, ""
+  return err, ''
 end
 
 ---@param toplevel string
@@ -177,9 +165,9 @@ function HgAdapter.create(toplevel, path_args, cpath)
   })
 
   if not adapter.ctx.toplevel then
-    err = "Could not file top-level of the repository!"
+    err = 'Could not file top-level of the repository!'
   elseif not pl:is_dir(adapter.ctx.toplevel) then
-    err = "The top-level is not a readable directory: " .. adapter.ctx.toplevel
+    err = 'The top-level is not a readable directory: ' .. adapter.ctx.toplevel
   end
 
   return err, adapter
@@ -198,58 +186,48 @@ function HgAdapter:init(opt)
   self:init_completion()
 end
 
-function HgAdapter:get_command()
-  return config.get_config().hg_cmd
-end
+function HgAdapter:get_command() return config.get_config().hg_cmd end
 
 function HgAdapter:get_show_args(path, rev)
-  return utils.vec_join(self:args(), "cat", "--rev", rev:object_name(), "--", path)
+  return utils.vec_join(self:args(), 'cat', '--rev', rev:object_name(), '--', path)
 end
 
-function HgAdapter:get_log_args(args)
-  return utils.vec_join("log", "--stat", '--rev', args)
-end
+function HgAdapter:get_log_args(args) return utils.vec_join('log', '--stat', '--rev', args) end
 
 function HgAdapter:get_dir(path)
-  local out, code = self:exec_sync({ "root", "--template={hgpath}" }, path)
-  if code ~= 0 then
-    return nil
-  end
+  local out, code = self:exec_sync({ 'root', '--template={hgpath}' }, path)
+  if code ~= 0 then return nil end
   return out[1] and vim.trim(out[1])
 end
 
 function HgAdapter:get_merge_context()
   local ret = {}
 
-  local out, code = self:exec_sync({ "debugmergestate", "-Tjson" }, self.ctx.toplevel)
+  local out, code = self:exec_sync({ 'debugmergestate', '-Tjson' }, self.ctx.toplevel)
 
-  if code ~= 0 then
-    return {ours = {}, theirs = {}, base = {}}
-  end
+  if code ~= 0 then return { ours = {}, theirs = {}, base = {} } end
 
-  local data = vim.json.decode(table.concat(out, ""))
+  local data = vim.json.decode(table.concat(out, ''))
 
-  ret.base = { hash = "" }
+  ret.base = { hash = '' }
 
   for _, commit in ipairs(data[1].commits) do
-    if commit.name == "other" then
+    if commit.name == 'other' then
       ret.theirs = { hash = commit.node }
-      out, code = self:exec_sync({ "log", "--template={branch}", "--rev", commit.node }, self.ctx.toplevel)
-      if code == 0 then
-        ret.theirs.ref_names = out[1]
-      end
-    elseif commit.name == "local" then
+      out, code =
+        self:exec_sync({ 'log', '--template={branch}', '--rev', commit.node }, self.ctx.toplevel)
+      if code == 0 then ret.theirs.ref_names = out[1] end
+    elseif commit.name == 'local' then
       ret.ours = { hash = commit.node }
-      out, code = self:exec_sync({ "log", "--template={branch}", "--rev", commit.node }, self.ctx.toplevel)
-      if code == 0 then
-        ret.ours.ref_names = out[1]
-      end
+      out, code =
+        self:exec_sync({ 'log', '--template={branch}', '--rev', commit.node }, self.ctx.toplevel)
+      if code == 0 then ret.ours.ref_names = out[1] end
     end
   end
 
   for _, file in ipairs(data[1].files) do
     for _, extra in ipairs(file.extras) do
-      if (extra.key == 'ancestorlinknode' and extra.value ~= HgAdapter.Rev.NULL_TREE_SHA) then
+      if extra.key == 'ancestorlinknode' and extra.value ~= HgAdapter.Rev.NULL_TREE_SHA then
         ret.base.hash = extra.value
         break
       end
@@ -263,12 +241,13 @@ end
 ---@param paths string[]
 ---@param argo ArgObject
 function HgAdapter:file_history_options(range, paths, argo)
-  local cfile = pl:vim_expand("%")
+  local cfile = pl:vim_expand('%')
   cfile = pl:readlink(cfile) or cfile
 
-  local rel_paths = vim.tbl_map(function(v)
-    return v == "." and "." or pl:relative(v, ".")
-  end, paths) --[[@as string[] ]]
+  local rel_paths = vim.tbl_map(
+    function(v) return v == '.' and '.' or pl:relative(v, '.') end,
+    paths
+  ) --[[@as string[] ]]
 
   local range_arg = argo:get_flag('rev', { no_empty = true })
   -- if range_arg then
@@ -276,29 +255,29 @@ function HgAdapter:file_history_options(range, paths, argo)
   -- end
 
   if range then
-    utils.err("Line ranges are not supported for hg!")
+    utils.err('Line ranges are not supported for hg!')
     return
   end
 
   local log_flag_names = {
-    { "rev", "r" },
-    { "follow", "f" },
-    { "limit", "l" },
-    { "no-merges", "M" },
-    { "user", "u" },
-    { "keyword", "k" },
-    { "branch" },
-    { "bookmark" },
-    { "include", "I" },
-    { "exclude", "X" },
+    { 'rev', 'r' },
+    { 'follow', 'f' },
+    { 'limit', 'l' },
+    { 'no-merges', 'M' },
+    { 'user', 'u' },
+    { 'keyword', 'k' },
+    { 'branch' },
+    { 'bookmark' },
+    { 'include', 'I' },
+    { 'exclude', 'X' },
   }
 
   ---@type HgLogOptions
   local log_options = { rev_range = range_arg }
   for _, names in ipairs(log_flag_names) do
-    local key, _ = names[1]:gsub("%-", "_")
+    local key, _ = names[1]:gsub('%-', '_')
     local v = argo:get_flag(names, {
-      expect_string = type(config.log_option_defaults[self.config_key][key]) ~= "boolean",
+      expect_string = type(config.log_option_defaults[self.config_key][key]) ~= 'boolean',
     })
     log_options[key] = v
   end
@@ -308,14 +287,14 @@ function HgAdapter:file_history_options(range, paths, argo)
   local ok, opt_description = self:file_history_dry_run(log_options)
 
   if not ok then
-    local msg = "No git history for the target(s) given the current options! Targets: %s\n"
-      .. "Current options: [ %s ]"
+    local msg = 'No git history for the target(s) given the current options! Targets: %s\n'
+      .. 'Current options: [ %s ]'
 
     if #rel_paths == 0 then
       utils.info(fmt(msg, "':(top)'", opt_description))
     else
       local msg_paths = vim.tbl_map(utils.str_quote, rel_paths)
-      utils.info(fmt(msg, table.concat(msg_paths, ", "), opt_description))
+      utils.info(fmt(msg, table.concat(msg_paths, ', '), opt_description))
     end
 
     return
@@ -345,9 +324,7 @@ function HgAdapter:prepare_fh_options(log_options, single_file)
   local o = log_options
   local rev_range, base
 
-  if log_options.rev then
-    rev_range = log_options.rev
-  end
+  if log_options.rev then rev_range = log_options.rev end
 
   -- if log_options.base then
   --   -- TODO
@@ -358,15 +335,15 @@ function HgAdapter:prepare_fh_options(log_options, single_file)
     base = base,
     path_args = log_options.path_args,
     flags = utils.vec_join(
-      (o.follow and single_file) and { "--follow" } or nil,
-      o.limit and { "--limit=" .. o.limit } or nil,
-      o.no_merges and { "--no-merges" } or nil,
-      o.user and { "--user=" .. o.user } or nil,
-      o.keyword and { "--keyword=" .. o.keyword } or nil,
-      o.branch and { "--branch=" .. o.branch } or nil,
-      o.bookmark and { "--bookmark=" .. o.bookmark } or nil,
-      o.include and { "--include=" .. o.include } or nil,
-      o.exclude and { "--exclude=" .. o.exclude } or nil
+      (o.follow and single_file) and { '--follow' } or nil,
+      o.limit and { '--limit=' .. o.limit } or nil,
+      o.no_merges and { '--no-merges' } or nil,
+      o.user and { '--user=' .. o.user } or nil,
+      o.keyword and { '--keyword=' .. o.keyword } or nil,
+      o.branch and { '--branch=' .. o.branch } or nil,
+      o.bookmark and { '--bookmark=' .. o.bookmark } or nil,
+      o.include and { '--include=' .. o.include } or nil,
+      o.exclude and { '--exclude=' .. o.exclude } or nil
     ),
   }
 end
@@ -377,14 +354,15 @@ function HgAdapter:file_history_dry_run(log_opt)
   local single_file = self:is_single_file(log_opt.path_args)
   local log_options = config.get_log_options(single_file, log_opt, self.config_key) --[[@as HgLogOptions ]]
 
-  local options = vim.tbl_map(function(v)
-    return vim.fn.shellescape(v)
-  end, self:prepare_fh_options(log_options, single_file).flags) --[[@as vector ]]
+  local options = vim.tbl_map(
+    function(v) return vim.fn.shellescape(v) end,
+    self:prepare_fh_options(log_options, single_file).flags
+  ) --[[@as vector ]]
 
   local description = utils.vec_join(
-    fmt("Top-level path: '%s'", pl:vim_fnamemodify(self.ctx.toplevel, ":~")),
+    fmt("Top-level path: '%s'", pl:vim_fnamemodify(self.ctx.toplevel, ':~')),
     log_options.rev and fmt("Revision range: '%s'", log_options.rev) or nil,
-    fmt("Flags: %s", table.concat(options, " "))
+    fmt('Flags: %s', table.concat(options, ' '))
   )
 
   log_options = utils.tbl_clone(log_options) --[[@as HgLogOptions ]]
@@ -392,10 +370,10 @@ function HgAdapter:file_history_dry_run(log_opt)
   -- TODO
   options = self:prepare_fh_options(log_options, single_file).flags
 
-  local context = "HgAdapter:file_history_dry_run()"
+  local context = 'HgAdapter:file_history_dry_run()'
   local cmd = utils.vec_join(
-    "log",
-    log_options.rev and "--rev=" .. log_options.rev or nil,
+    'log',
+    log_options.rev and '--rev=' .. log_options.rev or nil,
     options,
     log_options.path_args
   )
@@ -407,11 +385,9 @@ function HgAdapter:file_history_dry_run(log_opt)
 
   local ok = code == 0 and #out > 0
 
-  if not ok then
-    logger:fmt_debug("[%s] Dry run failed.", context)
-  end
+  if not ok then logger:fmt_debug('[%s] Dry run failed.', context) end
 
-  return ok, table.concat(description, ", ")
+  return ok, table.concat(description, ', ')
 end
 
 local function structure_fh_data(namestat_data, numstat_data)
@@ -419,9 +395,9 @@ local function structure_fh_data(namestat_data, numstat_data)
   local time, time_offset = namestat_data[3]:match('(%d+.%d*)([-+]?%d*)')
 
   return {
-    left_hash = left_hash ~= "" and left_hash or nil,
+    left_hash = left_hash ~= '' and left_hash or nil,
     right_hash = right_hash,
-    merge_hash = merge_hash ~= "" and merge_hash or nil,
+    merge_hash = merge_hash ~= '' and merge_hash or nil,
     author = namestat_data[2],
     time = tonumber(time),
     time_offset = time_offset,
@@ -432,7 +408,6 @@ local function structure_fh_data(namestat_data, numstat_data)
     numstat = numstat_data,
   }
 end
-
 
 ---@param state HgAdapter.FHState
 function HgAdapter:stream_fh_data(state)
@@ -445,42 +420,34 @@ function HgAdapter:stream_fh_data(state)
 
   local raw = {}
   local namestat_state = {
-    key = "namestat",
+    key = 'namestat',
     idx = 0,
   }
   local numstat_state = {
-    key = "numstat",
+    key = 'numstat',
     idx = 0,
   }
 
   local function on_stdout(_, line, j)
     local handler_state = j == namestat_job and namestat_state or numstat_state
 
-    if line == "\0" then
+    if line == '\0' then
       if handler_state.data then
-        if not raw[handler_state.idx] then
-          raw[handler_state.idx] = {}
-        end
+        if not raw[handler_state.idx] then raw[handler_state.idx] = {} end
 
         local raw_entry = raw[handler_state.idx]
         raw_entry[handler_state.key] = handler_state.data
 
-        if not raw_entry.done
-            and raw_entry.namestat
-            and raw_entry.numstat
-        then
+        if not raw_entry.done and raw_entry.namestat and raw_entry.numstat then
           raw_entry.done = true
-          local log_data = structure_fh_data(
-            raw_entry.namestat,
-            raw_entry.numstat
-          )
+          local log_data = structure_fh_data(raw_entry.namestat, raw_entry.numstat)
           stream:push({ JobStatus.PROGRESS, log_data })
         end
       end
 
       handler_state.idx = handler_state.idx + 1
       handler_state.data = {}
-    elseif line ~= "" then
+    elseif line ~= '' then
       handler_state.data[#handler_state.data + 1] = line
     end
   end
@@ -490,10 +457,10 @@ function HgAdapter:stream_fh_data(state)
     on_close = function(shutdown)
       if shutdown and shutdown:check() then
         if mjob:is_running() then
-          logger:warn("Received shutdown signal. Killing file history jobs...")
+          logger:warn('Received shutdown signal. Killing file history jobs...')
           mjob:kill(64)
         else
-          logger:warn("Received shutdown signal, but no jobs are running. Nothing to do.")
+          logger:warn('Received shutdown signal, but no jobs are running. Nothing to do.')
         end
 
         stream:push({ JobStatus.KILLED })
@@ -501,39 +468,41 @@ function HgAdapter:stream_fh_data(state)
       end
 
       local ok, err = mjob:is_success()
-      if mjob:is_done() and ok then on_stdout(nil, "\0") end
+      if mjob:is_done() and ok then on_stdout(nil, '\0') end
 
       if not ok then
         stream:push({
           JobStatus.ERROR,
           nil,
-          table.concat(utils.vec_join(err, mjob:stderr()), "\n")
+          table.concat(utils.vec_join(err, mjob:stderr()), '\n'),
         })
       else
         stream:push({ JobStatus.SUCCESS })
       end
-    end
+    end,
   })
 
-  local rev_range = state.prepared_log_opts.rev_range and '--rev=' .. state.prepared_log_opts.rev_range or nil
-  local log_opt = { label = "HgAdapter:incremental_fh_data()" }
+  local rev_range = state.prepared_log_opts.rev_range
+      and '--rev=' .. state.prepared_log_opts.rev_range
+    or nil
+  local log_opt = { label = 'HgAdapter:incremental_fh_data()' }
 
   namestat_job = Job({
     command = self:bin(),
     args = utils.vec_join(
       self:args(),
-      "log",
+      'log',
       rev_range,
       '--template=\\x00\n'
-      .. '{node} {p1.node} {ifeq(p2.rev, -1 ,\"\", \"{p2.node}\")}\n'
-      .. '{author|person}\n'
-      .. '{date}\n'
-      .. '{date|age}\n'
-      .. '  {separate(", ", tags, topics)}\n'
-      .. '  {desc|firstline}\n'
-      .. '{files % "{status} {file}\n"}',
+        .. '{node} {p1.node} {ifeq(p2.rev, -1 ,"", "{p2.node}")}\n'
+        .. '{author|person}\n'
+        .. '{date}\n'
+        .. '{date|age}\n'
+        .. '  {separate(", ", tags, topics)}\n'
+        .. '  {desc|firstline}\n'
+        .. '{files % "{status} {file}\n"}',
       state.prepared_log_opts.flags,
-      "--",
+      '--',
       state.path_args
     ),
     cwd = self.ctx.toplevel,
@@ -545,12 +514,12 @@ function HgAdapter:stream_fh_data(state)
     command = self:bin(),
     args = utils.vec_join(
       self:args(),
-      "log",
+      'log',
       rev_range,
-      "--template=\\x00\n",
+      '--template=\\x00\n',
       '--stat',
       state.prepared_log_opts.flags,
-      "--",
+      '--',
       state.path_args
     ),
     cwd = self.ctx.toplevel,
@@ -571,7 +540,7 @@ function HgAdapter:is_single_file(path_args, lflags)
   if path_args and self.ctx.toplevel then
     return #path_args == 1
       and not pl:is_dir(path_args[1])
-      and #self:exec_sync({ "files", "--", path_args }, self.ctx.toplevel) < 2
+      and #self:exec_sync({ 'files', '--', path_args }, self.ctx.toplevel) < 2
   end
   return true
 end
@@ -580,16 +549,14 @@ end
 ---@param out_stream AsyncListStream
 ---@param opt vcs.adapter.FileHistoryWorkerSpec
 HgAdapter.file_history_worker = async.void(function(self, out_stream, opt)
-  local single_file = self:is_single_file(
-    opt.log_opt.single_file.path_args,
-    opt.log_opt.single_file.L
-  )
+  local single_file =
+    self:is_single_file(opt.log_opt.single_file.path_args, opt.log_opt.single_file.L)
 
   ---@type HgLogOptions
   local log_options = config.get_log_options(
     single_file,
     single_file and opt.log_opt.single_file or opt.log_opt.multi_file,
-    "hg"
+    'hg'
   )
 
   -- TODO: Change in the future if `-L` is implemented
@@ -605,15 +572,15 @@ HgAdapter.file_history_worker = async.void(function(self, out_stream, opt)
   }
 
   logger:info(
-    "[FileHistory] Updating with options:",
-    vim.inspect(state.prepared_log_opts, { newline = " ", indent = "" })
+    '[FileHistory] Updating with options:',
+    vim.inspect(state.prepared_log_opts, { newline = ' ', indent = '' })
   )
 
   ---@type AsyncListStream
   local in_stream
 
   if is_trace then
-    error("Unimplemented!")
+    error('Unimplemented!')
   else
     in_stream = self:stream_fh_data(state)
   end
@@ -633,13 +600,13 @@ HgAdapter.file_history_worker = async.void(function(self, out_stream, opt)
     -- Make sure to yield to the scheduler periodically to keep the editor
     -- responsive.
     local now = uv.hrtime()
-    if (now - last_wait > interval) then
+    if now - last_wait > interval then
       last_wait = now
       await(async.schedule_now())
     end
 
     if status == JobStatus.KILLED then
-      logger:warn("File history processing was killed.")
+      logger:warn('File history processing was killed.')
       out_stream:push({ status })
       out_stream:close()
       return
@@ -652,43 +619,41 @@ HgAdapter.file_history_worker = async.void(function(self, out_stream, opt)
       out_stream:close()
       return
     elseif status ~= JobStatus.PROGRESS then
-      error("Unexpected state!")
+      error('Unexpected state!')
     end
 
     -- Status is PROGRESS
-    assert(new_data, "No data received from scheduler!")
+    assert(new_data, 'No data received from scheduler!')
 
     -- 'hg log' doesn't work properly for merge commits. It
     -- lists only an incomplete list of files at best. We need to use 'hg
     -- show' to get file statuses for merge commits. And merges do not always
     -- have changes.
-    if new_data.merge_hash
-      and new_data.numstat[1]
-      or (#new_data.numstat -1) ~= #new_data.namestat
+    if
+      new_data.merge_hash and new_data.numstat[1]
+      or (#new_data.numstat - 1) ~= #new_data.namestat
     then
       local job = Job({
         command = self:bin(),
         args = utils.vec_join(
           self:args(),
-          "status",
-          "--change",
+          'status',
+          '--change',
           new_data.right_hash,
-          "--",
+          '--',
           state.old_path or state.path_args
         ),
         cwd = self.ctx.toplevel,
         fail_cond = Job.FAIL_COND.on_empty,
-        log_opt = { label = "HgAdapter:file_history_worker()" },
+        log_opt = { label = 'HgAdapter:file_history_worker()' },
       })
 
       local ok = await(job)
 
-      if job.code == 0 then
-        new_data.namestat = job.stdout
-      end
+      if job.code == 0 then new_data.namestat = job.stdout end
 
       if not ok or job.code ~= 0 then
-        out_stream:push({ JobStatus.ERROR, nil, table.concat(job.stderr, "\n") })
+        out_stream:push({ JobStatus.ERROR, nil, table.concat(job.stderr, '\n') })
         out_stream:close()
         return
       end
@@ -696,12 +661,12 @@ HgAdapter.file_history_worker = async.void(function(self, out_stream, opt)
       if #new_data.namestat == 0 then
         -- Give up: something has been renamed. We can no longer track the
         -- history.
-        logger:warn(fmt("[%s] Giving up.", job.log_opt.label))
+        logger:warn(fmt('[%s] Giving up.', job.log_opt.label))
         utils.warn("Displayed history may be incomplete. Check ':DiffviewLog' for details.", true)
         out_stream:push({
           JobStatus.ERROR,
           nil,
-          fmt("Failed to get log data for merge commit '%s'!", new_data.right_hash)
+          fmt("Failed to get log data for merge commit '%s'!", new_data.right_hash),
         })
         return
       end
@@ -722,7 +687,7 @@ HgAdapter.file_history_worker = async.void(function(self, out_stream, opt)
     local ok, entry
 
     if is_trace then
-      error("Unimplemented")
+      error('Unimplemented')
     else
       ok, entry = self:parse_fh_data(new_data, commit, state)
     end
@@ -742,17 +707,16 @@ function HgAdapter:parse_fh_data(data, commit, state)
   local files = {}
 
   for i = 1, #data.numstat - 1 do
-    local status = data.namestat[i]:sub(1, 1):gsub("%s", " ")
+    local status = data.namestat[i]:sub(1, 1):gsub('%s', ' ')
     if status == 'R' then
       -- R is for Removed in mercurial
       status = 'D'
     end
 
-
     -- TODO(zegervdv): Cannot get diffstats from mercurial reliably
     -- see https://github.com/sindrets/diffview.nvim/issues/366
     local stats = nil
-    local name, _ = data.numstat[i]:match("(.*)|.*")
+    local name, _ = data.numstat[i]:match('(.*)|.*')
     name = vim.trim(name)
 
     local oldname
@@ -766,48 +730,47 @@ function HgAdapter:parse_fh_data(data, commit, state)
 
     table.insert(
       files,
-      FileEntry.with_layout(
-        state.layout_opt.default_layout or Diff2Hor,
-        {
-          adapter = self,
-          path = name,
-          oldpath = oldname,
-          status = status,
-          stats = stats,
-          kind = "working",
-          commit = commit,
-          revs = {
-            a = data.left_hash and HgRev(RevType.COMMIT, data.left_hash) or HgRev.new_null_tree(),
-            b = state.prepared_log_opts.base or HgRev(RevType.COMMIT, data.right_hash),
-          }
-        }
-      )
+      FileEntry.with_layout(state.layout_opt.default_layout or Diff2Hor, {
+        adapter = self,
+        path = name,
+        oldpath = oldname,
+        status = status,
+        stats = stats,
+        kind = 'working',
+        commit = commit,
+        revs = {
+          a = data.left_hash and HgRev(RevType.COMMIT, data.left_hash) or HgRev.new_null_tree(),
+          b = state.prepared_log_opts.base or HgRev(RevType.COMMIT, data.right_hash),
+        },
+      })
     )
   end
 
   if files[1] then
-    return true, LogEntry({
-      path_args = state.path_args,
-      commit = commit,
-      files = files,
-      single_file = state.single_file,
-    })
+    return true,
+      LogEntry({
+        path_args = state.path_args,
+        commit = commit,
+        files = files,
+        single_file = state.single_file,
+      })
   end
 
   if state.path_args[1] then
     -- If path args are provided we never want to show empty log entries.
-    logger:warn("[HgAdapter:parse_fh_data()] Encountered commit with no file data:", data)
-    return false, "Found no relevant file data with given path args!"
+    logger:warn('[HgAdapter:parse_fh_data()] Encountered commit with no file data:', data)
+    return false, 'Found no relevant file data with given path args!'
   end
 
   -- Commit is likely identical to it's parent. Return an empty log entry.
-  return true, LogEntry({
-    path_args = state.path_args,
-    commit = commit,
-    single_file = state.single_file,
-    nulled = true,
-    files = { FileEntry.new_null_entry(self) },
-  })
+  return true,
+    LogEntry({
+      path_args = state.path_args,
+      commit = commit,
+      single_file = state.single_file,
+      nulled = true,
+      files = { FileEntry.new_null_entry(self) },
+    })
 end
 
 ---@param argo ArgObject
@@ -815,23 +778,21 @@ function HgAdapter:diffview_options(argo)
   local rev_args = argo.args[1]
 
   local left, right = self:parse_revs(rev_args, {})
-  if not (left and right) then
-    return
-  end
+  if not (left and right) then return end
 
   local options = {
     show_untracked = arg_parser.ambiguous_bool(
-      argo:get_flag({ "u", "untracked-files" }, { plain = true }),
+      argo:get_flag({ 'u', 'untracked-files' }, { plain = true }),
       nil,
-      { "all", "normal", "true" },
-      { "no", "false" }
+      { 'all', 'normal', 'true' },
+      { 'no', 'false' }
     ),
-    selected_file = argo:get_flag("selected-file", { no_empty = true, expand = true })
-        or (vim.bo.buftype == "" and pl:vim_expand("%:p"))
-        or nil,
+    selected_file = argo:get_flag('selected-file', { no_empty = true, expand = true })
+      or (vim.bo.buftype == '' and pl:vim_expand('%:p'))
+      or nil,
   }
 
-  return {left = left, right = right, options = options}
+  return { left = left, right = right, options = options }
 end
 
 function HgAdapter:rev_to_pretty_string(left, right)
@@ -840,23 +801,21 @@ function HgAdapter:rev_to_pretty_string(left, right)
   elseif left.commit and right.type == RevType.LOCAL then
     return left:abbrev()
   elseif right and right.commit then
-    return left:abbrev() .. "::" .. right:abbrev()
+    return left:abbrev() .. '::' .. right:abbrev()
   end
   return nil
 end
 
 function HgAdapter:head_rev()
-  local out, code = self:exec_sync({ "log", "--template={node}", "--limit=1", "--rev=.", "--" }, {
+  local out, code = self:exec_sync({ 'log', '--template={node}', '--limit=1', '--rev=.', '--' }, {
     cwd = self.ctx.toplevel,
     retry = 2,
     fail_on_empty = true,
   })
 
-  if code ~= 0 then
-    return
-  end
+  if code ~= 0 then return end
 
-  local s = vim.trim(out[1]):gsub("^%^", "")
+  local s = vim.trim(out[1]):gsub('^%^', '')
 
   return HgRev(RevType.COMMIT, s, true)
 end
@@ -867,7 +826,7 @@ function HgAdapter:rev_to_args(left, right)
     "Can't diff LOCAL against LOCAL!"
   )
   if left.type == RevType.COMMIT and right.type == RevType.COMMIT then
-    return { '--rev=' .. left.commit .. '::' .. right.commit}
+    return { '--rev=' .. left.commit .. '::' .. right.commit }
   elseif left.type == RevType.STAGE and right.type == RevType.LOCAL then
     return {}
   else
@@ -875,14 +834,13 @@ function HgAdapter:rev_to_args(left, right)
   end
 end
 
-
 ---Determine whether a rev arg is a range.
 ---@param rev_arg string
 ---@return boolean
 function HgAdapter:is_rev_arg_range(rev_arg)
   return utils.str_match(rev_arg, {
-    "%:",
-    "%:%:",
+    '%:',
+    '%:%:',
   }) ~= nil
 end
 
@@ -904,36 +862,40 @@ function HgAdapter:parse_revs(rev_arg, opt)
     left = head or HgRev.new_null_tree()
     right = HgRev(RevType.LOCAL)
   else
-    local from, to = rev_arg:match("([^:]*)%:%:?(.*)$")
+    local from, to = rev_arg:match('([^:]*)%:%:?(.*)$')
 
-    if from and from ~= ""  and to and to ~= "" then
+    if from and from ~= '' and to and to ~= '' then
       left = HgRev(RevType.COMMIT, from)
       right = HgRev(RevType.COMMIT, to)
-    elseif from and from ~= "" then
+    elseif from and from ~= '' then
       left = HgRev(RevType.COMMIT, from)
       right = head
-    elseif to and to ~= "" then
+    elseif to and to ~= '' then
       left = HgRev.new_null_tree()
       right = HgRev(RevType.COMMIT, to)
     else
-      local node, code, stderr = self:exec_sync({"log", "--limit=1", "--template={node}",  "--rev=" .. rev_arg}, self.ctx.toplevel)
+      local node, code, stderr = self:exec_sync(
+        { 'log', '--limit=1', '--template={node}', '--rev=' .. rev_arg },
+        self.ctx.toplevel
+      )
       if code ~= 0 and node then
-        utils.err(fmt("Failed to parse rev %s: %s", utils.str_quote(rev_arg), stderr))
+        utils.err(fmt('Failed to parse rev %s: %s', utils.str_quote(rev_arg), stderr))
         return
       end
       left = HgRev(RevType.COMMIT, node[1])
 
-      node, code, stderr = self:exec_sync({"log", "--limit=1", "--template={node}",  "--rev=reverse(" .. rev_arg .. ")"}, self.ctx.toplevel)
-      if code ~= 0  and node then
-        utils.err(fmt("Failed to parse rev %s: %s", utils.str_quote(rev_arg), stderr))
+      node, code, stderr = self:exec_sync(
+        { 'log', '--limit=1', '--template={node}', '--rev=reverse(' .. rev_arg .. ')' },
+        self.ctx.toplevel
+      )
+      if code ~= 0 and node then
+        utils.err(fmt('Failed to parse rev %s: %s', utils.str_quote(rev_arg), stderr))
         return
       end
 
       right = HgRev(RevType.COMMIT, node[1])
       -- If we refer to a single revision, show diff with working directory
-      if node[1] == left.commit then
-        right = HgRev(RevType.LOCAL )
-      end
+      if node[1] == left.commit then right = HgRev(RevType.LOCAL) end
     end
   end
 
@@ -949,7 +911,7 @@ HgAdapter.file_restore = async.wrap(function(self, path, kind, commit, callback)
   local _, code
   local abs_path = pl:join(self.ctx.toplevel, path)
 
-  _, code = self:exec_sync({"cat", "--", path}, self.ctx.toplevel)
+  _, code = self:exec_sync({ 'cat', '--', path }, self.ctx.toplevel)
 
   local exists_hg = code == 0
   local undo
@@ -962,35 +924,32 @@ HgAdapter.file_restore = async.wrap(function(self, path, kind, commit, callback)
       if not ok then
         utils.err({
           fmt("Failed to delete buffer '%d'! Aborting file restoration. Error message:", bn),
-          err
+          err,
         }, true)
         callback(false)
         return
       end
     end
 
-    if kind == "working" or kind == "conflicting" then
+    if kind == 'working' or kind == 'conflicting' then
       -- File is untracked and has no history: delete it from fs.
       local ok, err = pawait(pl.unlink, pl, abs_path)
       if not ok then
         utils.err({
           fmt("Failed to delete file '%s'! Aborting file restoration. Error message:", abs_path),
-          err
+          err,
         }, true)
         callback(false)
         return
       end
     else
       -- File only exists in index
-      _, code = self:exec_sync(
-        { "rm", "-f", "--", path },
-        self.ctx.toplevel
-      )
+      _, code = self:exec_sync({ 'rm', '-f', '--', path }, self.ctx.toplevel)
     end
   else
     -- File exists in history: revert
     _, code = self:exec_sync(
-      utils.vec_join("revert", commit or (kind == "staged" and "HEAD" or nil), "--", path),
+      utils.vec_join('revert', commit or (kind == 'staged' and 'HEAD' or nil), '--', path),
       self.ctx.toplevel
     )
   end
@@ -1006,14 +965,12 @@ function HgAdapter:show_untracked(opt)
 
   -- Only show untracked when comparing the working directory
   if opt.revs then
-    if not (opt.revs.right.type == RevType.LOCAL) then
-      return false
-    end
+    if not (opt.revs.right.type == RevType.LOCAL) then return false end
   end
 
   -- Check the user provided flag options
   if opt.dv_opt then
-    if type(opt.dv_opt.show_untracked) == "boolean" and not opt.dv_opt.show_untracked then
+    if type(opt.dv_opt.show_untracked) == 'boolean' and not opt.dv_opt.show_untracked then
       return false
     end
   end
@@ -1022,34 +979,42 @@ function HgAdapter:show_untracked(opt)
   --    [diffview.nvim]
   --    untracked = no
   local out = self:exec_sync(
-    { "log", "--rev=0", "--template={configbool('diffview.nvim', 'untracked', 'True')}" },
+    { 'log', '--rev=0', "--template={configbool('diffview.nvim', 'untracked', 'True')}" },
     { cwd = self.ctx.toplevel, silent = true }
   )
 
-  return vim.trim(out[1] or "") ~= "False"
+  return vim.trim(out[1] or '') ~= 'False'
 end
 
 function HgAdapter:get_files_args(args)
-  return utils.vec_join(self:args(), "status", "--print0", "--unknown", "--no-status", "--template={path}\\n", args)
+  return utils.vec_join(
+    self:args(),
+    'status',
+    '--print0',
+    '--unknown',
+    '--no-status',
+    '--template={path}\\n',
+    args
+  )
 end
 
-HgAdapter.tracked_files = async.wrap(function (self, left, right, args, kind, opt, callback)
+HgAdapter.tracked_files = async.wrap(function(self, left, right, args, kind, opt, callback)
   ---@type FileEntry[]
   local files = {}
   ---@type FileEntry[]
   local conflicts = {}
-  local log_opt = { label = "HgAdapter:tracked_files()" }
+  local log_opt = { label = 'HgAdapter:tracked_files()' }
 
   local namestat_job = Job({
     command = self:bin(),
     args = utils.vec_join(
       self:args(),
-      "status",
-      "--modified",
-      "--added",
-      "--removed",
-      "--deleted",
-      "--template={status} {path}\n",
+      'status',
+      '--modified',
+      '--added',
+      '--removed',
+      '--deleted',
+      '--template={status} {path}\n',
       args
     ),
     cwd = self.ctx.toplevel,
@@ -1058,7 +1023,7 @@ HgAdapter.tracked_files = async.wrap(function (self, left, right, args, kind, op
   })
   local mergestate_job = Job({
     command = self:bin(),
-    args = utils.vec_join(self:args(), "debugmergestate", "-Tjson"),
+    args = utils.vec_join(self:args(), 'debugmergestate', '-Tjson'),
     cwd = self.ctx.toplevel,
     retry = 2,
     log_opt = log_opt,
@@ -1079,15 +1044,15 @@ HgAdapter.tracked_files = async.wrap(function (self, left, right, args, kind, op
   local file_info = {}
 
   for _, s in ipairs(namestat_out) do
-    if s ~= " " then
-      local status = s:sub(1, 1):gsub("%s", " ")
-      local name = vim.trim(s:match("[%a%s]%s*(.*)"))
+    if s ~= ' ' then
+      local status = s:sub(1, 1):gsub('%s', ' ')
+      local name = vim.trim(s:match('[%a%s]%s*(.*)'))
 
       -- TODO(zegervdv): Cannot get correct values from mercurial
       -- see https://github.com/sindrets/diffview.nvim/issues/366
       local stats = {}
 
-      if not (kind == "staged") then
+      if not (kind == 'staged') then
         file_info[name] = {
           status = status,
           name = name,
@@ -1101,16 +1066,12 @@ HgAdapter.tracked_files = async.wrap(function (self, left, right, args, kind, op
   for _, file in ipairs(mergestate[1].files) do
     local base = nil
     for _, extra in ipairs(file.extras) do
-      if extra.key == 'ancestorlinknode' then
-        base = extra.value
-      end
+      if extra.key == 'ancestorlinknode' then base = extra.value end
     end
     if file.state == 'u' then
       file_info[file.path].status = 'U'
       file_info[file.path].base = base
-      if file.other_path ~= file.path then
-        file_info[file.path].oldname = file.other_path
-      end
+      if file.other_path ~= file.path then file_info[file.path].oldname = file.other_path end
       conflict_map[file.path] = file_info[file.path]
     end
   end
@@ -1121,42 +1082,46 @@ HgAdapter.tracked_files = async.wrap(function (self, left, right, args, kind, op
   end
 
   for _, f in pairs(file_info) do
-    if f.status ~= "U" then
-      table.insert(data, f)
-    end
+    if f.status ~= 'U' then table.insert(data, f) end
   end
 
-  if kind == "working" and next(conflict_map) then
+  if kind == 'working' and next(conflict_map) then
     for _, v in pairs(conflict_map) do
-      table.insert(conflicts, FileEntry.with_layout(opt.merge_layout, {
-        adapter = self,
-        path = v.name,
-        oldpath = v.oldname,
-        status = "U",
-        kind = "conflicting",
-        revs = {
-          a = self.Rev(RevType.COMMIT, nodes['local']),
-          b = self.Rev(RevType.LOCAL),
-          c = self.Rev(RevType.COMMIT, nodes.other),
-          d = self.Rev(RevType.COMMIT, v.base),
-        }
-      }))
+      table.insert(
+        conflicts,
+        FileEntry.with_layout(opt.merge_layout, {
+          adapter = self,
+          path = v.name,
+          oldpath = v.oldname,
+          status = 'U',
+          kind = 'conflicting',
+          revs = {
+            a = self.Rev(RevType.COMMIT, nodes['local']),
+            b = self.Rev(RevType.LOCAL),
+            c = self.Rev(RevType.COMMIT, nodes.other),
+            d = self.Rev(RevType.COMMIT, v.base),
+          },
+        })
+      )
     end
   end
 
   for _, v in ipairs(data) do
-    table.insert(files, FileEntry.with_layout(opt.default_layout, {
-      adapter = self,
-      path = v.name,
-      oldpath = v.oldname,
-      status = v.status,
-      stats = v.stats,
-      kind = kind,
-      revs = {
-        a = left,
-        b = right,
-      }
-    }))
+    table.insert(
+      files,
+      FileEntry.with_layout(opt.default_layout, {
+        adapter = self,
+        path = v.name,
+        oldpath = v.oldname,
+        status = v.status,
+        stats = v.stats,
+        kind = kind,
+        revs = {
+          a = left,
+          b = right,
+        },
+      })
+    )
   end
 
   callback(nil, files, conflicts)
@@ -1167,14 +1132,14 @@ HgAdapter.untracked_files = async.wrap(function(self, left, right, opt, callback
     command = self:bin(),
     args = utils.vec_join(
       self:args(),
-      "status",
-      "--print0",
-      "--unknown",
-      "--no-status",
-      "--template={path}\\n"
+      'status',
+      '--print0',
+      '--unknown',
+      '--no-status',
+      '--template={path}\\n'
     ),
     cwd = self.ctx.toplevel,
-    log_opt = { label = "HgAdapter:untracked_files()" }
+    log_opt = { label = 'HgAdapter:untracked_files()' },
   })
 
   await(job)
@@ -1191,12 +1156,12 @@ HgAdapter.untracked_files = async.wrap(function(self, left, right, opt, callback
       FileEntry.with_layout(opt.default_layout, {
         adapter = self,
         path = s,
-        status = "?",
-        kind = "working",
+        status = '?',
+        kind = 'working',
         revs = {
           a = left,
           b = right,
-        }
+        },
       })
     )
   end
@@ -1210,7 +1175,7 @@ end)
 ---@param callback fun(stderr: string[]?, stdout: string[]?)
 HgAdapter.show = async.wrap(function(self, path, rev, callback)
   -- File did not exist, need to return an empty buffer
-  if not(rev) or (rev:object_name() == self.Rev.NULL_TREE_SHA) then
+  if not rev or (rev:object_name() == self.Rev.NULL_TREE_SHA) then
     callback(nil, {})
     return
   end
@@ -1222,7 +1187,7 @@ HgAdapter.show = async.wrap(function(self, path, rev, callback)
     cwd = self.ctx.toplevel,
     retry = 2,
     fail_cond = Job.FAIL_COND.on_empty,
-    log_opt = { label = "HgAdapter:show()" },
+    log_opt = { label = 'HgAdapter:show()' },
     on_exit = async.void(function(_, ok, err)
       if not ok or job.code ~= 0 then
         -- Non zero exit code might mean the file was removed
@@ -1252,7 +1217,7 @@ HgAdapter.flags = {
   },
   ---@type FlagOption[]
   options = {
-    FlagOption('=r', '--rev=', 'Revspec', {prompt_label = "(Revspec)"}),
+    FlagOption('=r', '--rev=', 'Revspec', { prompt_label = '(Revspec)' }),
     FlagOption('=l', '--limit=', 'Limit the number of changesets'),
     FlagOption('=u', '--user=', 'Filter on user'),
     FlagOption('=k', '--keyword=', 'Filter by keyword'),
@@ -1278,16 +1243,16 @@ end
 
 -- TODO: implement completion
 function HgAdapter:rev_candidates(arg_lead, opt)
-  opt = vim.tbl_extend("keep", opt or {}, { accept_range = false }) --[[@as RevCompletionSpec ]]
-  logger:lvl(1):debug("[completion] Revision candidates requested")
+  opt = vim.tbl_extend('keep', opt or {}, { accept_range = false }) --[[@as RevCompletionSpec ]]
+  logger:lvl(1):debug('[completion] Revision candidates requested')
 
   local branches = self:exec_sync(
-    { "branches", "--template={branch}\n" },
+    { 'branches', '--template={branch}\n' },
     { cwd = self.ctx.toplevel, silent = true }
   )
 
   local heads = self:exec_sync(
-    { "heads", "--template={node|short}\n" },
+    { 'heads', '--template={node|short}\n' },
     { cwd = self.ctx.toplevel, silent = true }
   )
 
@@ -1295,17 +1260,15 @@ function HgAdapter:rev_candidates(arg_lead, opt)
 
   if opt.accept_range then
     local _, range_end = utils.str_match(arg_lead, {
-      "^(%:%:?)()$",
-      "^(%:%:?)()[^:]",
-      "[^:](%:%:?)()$",
-      "[^:](%:%:?)()[^:]",
+      '^(%:%:?)()$',
+      '^(%:%:?)()[^:]',
+      '[^:](%:%:?)()$',
+      '[^:](%:%:?)()[^:]',
     })
 
     if range_end then
       local range_lead = arg_lead:sub(1, range_end - 1)
-      ret = vim.tbl_map(function(v)
-        return range_lead .. v
-      end, ret)
+      ret = vim.tbl_map(function(v) return range_lead .. v end, ret)
     end
   end
 
@@ -1313,27 +1276,29 @@ function HgAdapter:rev_candidates(arg_lead, opt)
 end
 
 function HgAdapter:init_completion()
-  self.comp.file_history:put({"--rev", "-r"}, function(_, arg_lead)
-    return self:rev_candidates(arg_lead, { accept_range = true })
-  end)
+  self.comp.file_history:put(
+    { '--rev', '-r' },
+    function(_, arg_lead) return self:rev_candidates(arg_lead, { accept_range = true }) end
+  )
 
-  self.comp.file_history:put({ "--follow", "-f" })
-  self.comp.file_history:put({ "--no-merges", "-M" })
-  self.comp.file_history:put({ "--limit", "-l" }, {})
+  self.comp.file_history:put({ '--follow', '-f' })
+  self.comp.file_history:put({ '--no-merges', '-M' })
+  self.comp.file_history:put({ '--limit', '-l' }, {})
 
-  self.comp.file_history:put({ "--user", "-u" }, {})
-  self.comp.file_history:put({ "--keyword", "-k" }, {})
+  self.comp.file_history:put({ '--user', '-u' }, {})
+  self.comp.file_history:put({ '--keyword', '-k' }, {})
 
-  self.comp.file_history:put({ "--branch", "-b" }, {}) -- TODO: completion
-  self.comp.file_history:put({ "--bookmark", "-B" }, {}) -- TODO: completion
+  self.comp.file_history:put({ '--branch', '-b' }, {}) -- TODO: completion
+  self.comp.file_history:put({ '--bookmark', '-B' }, {}) -- TODO: completion
 
-  self.comp.file_history:put({"--include", "-I"}, function (_, arg_lead)
-    return vim.fn.getcompletion(arg_lead, "dir")
-  end)
-  self.comp.file_history:put({"--exclude", "-X"}, function (_, arg_lead)
-    return vim.fn.getcompletion(arg_lead, "dir")
-  end)
-
+  self.comp.file_history:put(
+    { '--include', '-I' },
+    function(_, arg_lead) return vim.fn.getcompletion(arg_lead, 'dir') end
+  )
+  self.comp.file_history:put(
+    { '--exclude', '-X' },
+    function(_, arg_lead) return vim.fn.getcompletion(arg_lead, 'dir') end
+  )
 end
 
 M.HgAdapter = HgAdapter

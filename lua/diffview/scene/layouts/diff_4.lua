@@ -1,11 +1,11 @@
-local async = require("diffview.async")
-local lazy = require("diffview.lazy")
-local Window = require("diffview.scene.window").Window
-local Layout = require("diffview.scene.layout").Layout
-local oop = require("diffview.oop")
+local async = require('diffview.async')
+local lazy = require('diffview.lazy')
+local Window = require('diffview.scene.window').Window
+local Layout = require('diffview.scene.layout').Layout
+local oop = require('diffview.oop')
 
-local Diff1 = lazy.access("diffview.scene.layouts.diff_1", "Diff1") ---@type Diff1|LazyModule
-local Diff3 = lazy.access("diffview.scene.layouts.diff_3", "Diff3") ---@type Diff3|LazyModule
+local Diff1 = lazy.access('diffview.scene.layouts.diff_1', 'Diff1') ---@type Diff1|LazyModule
+local Diff3 = lazy.access('diffview.scene.layouts.diff_3', 'Diff3') ---@type Diff3|LazyModule
 
 local await = async.await
 
@@ -16,7 +16,7 @@ local M = {}
 ---@field b Window
 ---@field c Window
 ---@field d Window
-local Diff4 = oop.create_class("Diff4", Layout)
+local Diff4 = oop.create_class('Diff4', Layout)
 
 ---@alias Diff4.WindowSymbol "a"|"b"|"c"|"d"
 
@@ -43,25 +43,25 @@ end
 ---@param file vcs.File
 function Diff4:set_file_a(file)
   self.a:set_file(file)
-  file.symbol = "a"
+  file.symbol = 'a'
 end
 
 ---@param file vcs.File
 function Diff4:set_file_b(file)
   self.b:set_file(file)
-  file.symbol = "b"
+  file.symbol = 'b'
 end
 
 ---@param file vcs.File
 function Diff4:set_file_c(file)
   self.c:set_file(file)
-  file.symbol = "c"
+  file.symbol = 'c'
 end
 
 ---@param file vcs.File
 function Diff4:set_file_d(file)
   self.d:set_file(file)
-  file.symbol = "d"
+  file.symbol = 'd'
 end
 
 ---@param self Diff4
@@ -75,14 +75,10 @@ Diff4.use_entry = async.void(function(self, entry)
   self:set_file_c(layout.c.file)
   self:set_file_d(layout.d.file)
 
-  if self:is_valid() then
-    await(self:open_files())
-  end
+  if self:is_valid() then await(self:open_files()) end
 end)
 
-function Diff4:get_main_win()
-  return self.b
-end
+function Diff4:get_main_win() return self.b end
 
 ---@param layout Diff1
 ---@return Diff1
@@ -108,9 +104,7 @@ end
 ---@param rev Rev
 ---@param status string Git status symbol.
 ---@param sym Diff4.WindowSymbol
-function Diff4.should_null(rev, status, sym)
-  return false
-end
+function Diff4.should_null(rev, status, sym) return false end
 
 M.Diff4 = Diff4
 return M

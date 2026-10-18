@@ -5,15 +5,15 @@ Derived from: https://github.com/Swatinem/diff
 
 ]]
 
-local oop = require("diffview.oop")
+local oop = require('diffview.oop')
 
 local M = {}
 
 ---@enum EditToken
 local EditToken = oop.enum({
-  NOOP    = 1,
-  DELETE  = 2,
-  INSERT  = 3,
+  NOOP = 1,
+  DELETE = 2,
+  INSERT = 3,
   REPLACE = 4,
 })
 
@@ -26,7 +26,7 @@ local EditToken = oop.enum({
 ---@field up table<integer, integer>
 ---@field down table<integer, integer>
 ---@field eql_fn function
-local Diff = oop.create_class("Diff")
+local Diff = oop.create_class('Diff')
 
 ---Diff constructor.
 ---@param a any[]
@@ -39,9 +39,7 @@ function Diff:init(a, b, eql_fn)
   self.modb = {}
   self.up = {}
   self.down = {}
-  self.eql_fn = eql_fn or function(aa, bb)
-    return aa == bb
-  end
+  self.eql_fn = eql_fn or function(aa, bb) return aa == bb end
 
   for i = 1, #a do
     self.moda[i] = false
@@ -216,7 +214,7 @@ function Diff:snake(astart, aend, bstart, bend)
     end
   end
 
-  error("Unexpected state!")
+  error('Unexpected state!')
 end
 
 M.EditToken = EditToken

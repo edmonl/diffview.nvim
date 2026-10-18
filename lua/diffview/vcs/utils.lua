@@ -1,10 +1,10 @@
-local FileDict = require("diffview.vcs.file_dict").FileDict
-local RevType = require("diffview.vcs.rev").RevType
-local Scanner = require("diffview.scanner")
-local Semaphore = require("diffview.control").Semaphore
-local async = require("diffview.async")
-local oop = require("diffview.oop")
-local utils = require("diffview.utils")
+local FileDict = require('diffview.vcs.file_dict').FileDict
+local RevType = require('diffview.vcs.rev').RevType
+local Scanner = require('diffview.scanner')
+local Semaphore = require('diffview.control').Semaphore
+local async = require('diffview.async')
+local oop = require('diffview.oop')
+local utils = require('diffview.utils')
 
 local api = vim.api
 local await = async.await
@@ -15,11 +15,11 @@ local M = {}
 
 ---@enum JobStatus
 local JobStatus = oop.enum({
-  SUCCESS  = 1,
+  SUCCESS = 1,
   PROGRESS = 2,
-  ERROR    = 3,
-  KILLED   = 4,
-  FATAL    = 5,
+  ERROR = 3,
+  KILLED = 4,
+  FATAL = 5,
 })
 
 ---@type diffview.Job[]
@@ -30,28 +30,20 @@ local job_queue_sem = Semaphore(1)
 M.resume_sync_queue = async.void(function(job)
   local permit = await(job_queue_sem:acquire()) --[[@as Permit ]]
   local idx = utils.vec_indexof(sync_jobs, job)
-  if idx > -1 then
-    table.remove(sync_jobs, idx)
-  end
+  if idx > -1 then table.remove(sync_jobs, idx) end
   permit:forget()
 
-  if sync_jobs[1] and not sync_jobs[1]:is_started() then
-    sync_jobs[1]:start()
-  end
+  if sync_jobs[1] and not sync_jobs[1]:is_started() then sync_jobs[1]:start() end
 end)
 
 ---@param job diffview.Job
 M.queue_sync_job = async.void(function(job)
-  job:on_exit(function()
-    M.resume_sync_queue(job)
-  end)
+  job:on_exit(function() M.resume_sync_queue(job) end)
 
   local permit = await(job_queue_sem:acquire()) --[[@as Permit ]]
   table.insert(sync_jobs, job)
 
-  if #sync_jobs == 1 then
-    job:start()
-  end
+  if #sync_jobs == 1 then job:start() end
 
   permit:forget()
 end)
@@ -71,45 +63,39 @@ M.diff_file_list = async.wrap(function(adapter, left, right, path_args, dv_opt, 
   local files = FileDict()
   local rev_args = adapter:rev_to_args(left, right)
   local errors = {}
-
-  ;(function()
+  (function()
     local err, tfiles, tconflicts = await(
-      adapter:tracked_files(
-        left,
-        right,
-        utils.vec_join(rev_args, "--", path_args),
-        "working",
-        opt
-      )
+      adapter:tracked_files(left, right, utils.vec_join(rev_args, '--', path_args), 'working', opt)
     )
 
     if err then
-      errors[#errors+1] = err
-      utils.err("Failed to get git status for tracked files!", true)
+      errors[#errors + 1] = err
+      utils.err('Failed to get git status for tracked files!', true)
       return
     end
 
     files:set_working(tfiles)
     files:set_conflicting(tconflicts)
 
-    if not adapter:show_untracked({
+    if
+      not adapter:show_untracked({
         dv_opt = dv_opt,
         revs = { left = left, right = right },
       })
-    then return end
+    then
+      return
+    end
 
     ---@diagnostic disable-next-line: redefined-local
     local err, ufiles = await(adapter:untracked_files(left, right, opt))
 
     if err then
-      errors[#errors+1] = err
-      utils.err("Failed to get git status for untracked files!", true)
+      errors[#errors + 1] = err
+      utils.err('Failed to get git status for untracked files!', true)
     else
       files:set_working(utils.vec_join(files.working, ufiles))
 
-      utils.merge_sort(files.working, function(a, b)
-        return a.path:lower() < b.path:lower()
-      end)
+      utils.merge_sort(files.working, function(a, b) return a.path:lower() < b.path:lower() end)
     end
   end)()
 
@@ -121,15 +107,15 @@ M.diff_file_list = async.wrap(function(adapter, left, right, path_args, dv_opt, 
       adapter:tracked_files(
         left_rev,
         right_rev,
-        utils.vec_join("--cached", left_rev.commit, "--", path_args),
-        "staged",
+        utils.vec_join('--cached', left_rev.commit, '--', path_args),
+        'staged',
         opt
       )
     )
 
     if err then
-      errors[#errors+1] = err
-      utils.err("Failed to get git status for staged files!", true)
+      errors[#errors + 1] = err
+      utils.err('Failed to get git status for staged files!', true)
     else
       files:set_staged(tfiles)
     end
@@ -160,8 +146,8 @@ M.restore_file = async.void(function(adapter, path, kind, commit)
     return
   end
 
-  local rev_name = (commit and commit:sub(1, 11)) or (kind == "staged" and "HEAD" or "index")
-  local msg = fmt("File restored from %s. %s", rev_name, undo and ("Undo with " .. undo) or "")
+  local rev_name = (commit and commit:sub(1, 11)) or (kind == 'staged' and 'HEAD' or 'index')
+  local msg = fmt('File restored from %s. %s', rev_name, undo and ('Undo with ' .. undo) or '')
 
   logger:info(msg)
   utils.info(msg, true)
@@ -223,37 +209,35 @@ local function parse_diff_hunk(scanner, old_row, old_size, new_row, new_size)
 
   local common_idx, old_offset, new_offset = 1, 0, 0
   local line = scanner:peek_line()
-  local cur_start = (line or ""):match("^([%+%- ])")
+  local cur_start = (line or ''):match('^([%+%- ])')
 
   while cur_start do
     line = scanner:next_line() --[[@as string ]]
 
-    if cur_start == " " then
-      ret.common_content[#ret.common_content + 1] = line:sub(2) or ""
+    if cur_start == ' ' then
+      ret.common_content[#ret.common_content + 1] = line:sub(2) or ''
       common_idx = common_idx + 1
+    elseif cur_start == '-' then
+      local content = { line:sub(2) or '' }
 
-    elseif cur_start == "-" then
-      local content = { line:sub(2) or "" }
-
-      while (scanner:peek_line() or ""):sub(1, 1) == "-" do
-        content[#content + 1] = scanner:next_line():sub(2) or ""
+      while (scanner:peek_line() or ''):sub(1, 1) == '-' do
+        content[#content + 1] = scanner:next_line():sub(2) or ''
       end
 
       ret.old_content[#ret.old_content + 1] = { common_idx + old_offset, content }
       old_offset = old_offset + #content
+    elseif cur_start == '+' then
+      local content = { line:sub(2) or '' }
 
-    elseif cur_start == "+" then
-      local content = { line:sub(2) or "" }
-
-      while (scanner:peek_line() or ""):sub(1, 1) == "+" do
-        content[#content + 1] = scanner:next_line():sub(2) or ""
+      while (scanner:peek_line() or ''):sub(1, 1) == '+' do
+        content[#content + 1] = scanner:next_line():sub(2) or ''
       end
 
       ret.new_content[#ret.new_content + 1] = { common_idx + new_offset, content }
       new_offset = new_offset + #content
     end
 
-    cur_start = (scanner:peek_line() or ""):match("^([%+%- ])")
+    cur_start = (scanner:peek_line() or ''):match('^([%+%- ])')
   end
 
   return ret
@@ -283,8 +267,9 @@ local function parse_file_diff(scanner)
   -- The current line will here be the diff header
 
   -- Extended git diff headers
-  while scanner:peek_line() and
-    not utils.str_match(scanner:peek_line() or "", { DIFF_HEADER, DIFF_HUNK_HEADER })
+  while
+    scanner:peek_line()
+    and not utils.str_match(scanner:peek_line() or '', { DIFF_HEADER, DIFF_HUNK_HEADER })
   do
     -- Extended header lines:
     -- old mode <mode>
@@ -304,66 +289,66 @@ local function parse_file_diff(scanner)
     local last_line_idx = scanner:cur_line_idx()
 
     -- Similarity
-    local similarity = (scanner:peek_line() or ""):match(DIFF_SIMILARITY)
+    local similarity = (scanner:peek_line() or ''):match(DIFF_SIMILARITY)
     if similarity then
       ret.similarity = tonumber(similarity) or -1
       scanner:next_line()
     end
 
     -- Dissimilarity
-    local dissimilarity = (scanner:peek_line() or ""):match([[^dissimilarity index (%d+)%%]])
+    local dissimilarity = (scanner:peek_line() or ''):match([[^dissimilarity index (%d+)%%]])
     if dissimilarity then
       ret.dissimilarity = tonumber(dissimilarity) or -1
       scanner:next_line()
     end
 
     -- Renames
-    local rename_from = (scanner:peek_line() or ""):match([[^rename from (.*)]])
+    local rename_from = (scanner:peek_line() or ''):match([[^rename from (.*)]])
     if rename_from then
       ret.renamed = true
       ret.path_old = rename_from
       scanner:skip_line()
-      ret.path_new = (scanner:next_line() or ""):match([[^rename to (.*)]])
+      ret.path_new = (scanner:next_line() or ''):match([[^rename to (.*)]])
     end
 
     -- Copies
-    local copy_from = (scanner:peek_line() or ""):match([[^copy from (.*)]])
+    local copy_from = (scanner:peek_line() or ''):match([[^copy from (.*)]])
     if copy_from then
       ret.path_old = copy_from
       scanner:skip_line()
-      ret.path_new = (scanner:next_line() or ""):match([[^copy to (.*)]])
+      ret.path_new = (scanner:next_line() or ''):match([[^copy to (.*)]])
     end
 
     -- Old mode
-    local old_mode = (scanner:peek_line() or ""):match([[^old mode (%d+)]])
+    local old_mode = (scanner:peek_line() or ''):match([[^old mode (%d+)]])
     if old_mode then
       ret.old_mode = old_mode
       scanner:next_line()
     end
 
     -- New mode
-    local new_mode = (scanner:peek_line() or ""):match([[^new mode (%d+)]])
+    local new_mode = (scanner:peek_line() or ''):match([[^new mode (%d+)]])
     if new_mode then
       ret.new_mode = new_mode
       scanner:next_line()
     end
 
     -- Deleted file
-    local deleted_file_mode = (scanner:peek_line() or ""):match([[^deleted file mode (%d+)]])
+    local deleted_file_mode = (scanner:peek_line() or ''):match([[^deleted file mode (%d+)]])
     if deleted_file_mode then
       ret.old_file_mode = deleted_file_mode
       scanner:next_line()
     end
 
     -- New file
-    local new_file_mode = (scanner:peek_line() or ""):match([[^new file mode (%d+)]])
+    local new_file_mode = (scanner:peek_line() or ''):match([[^new file mode (%d+)]])
     if new_file_mode then
       ret.new_file_mode = new_file_mode
       scanner:next_line()
     end
 
     -- Index
-    local index_old, index_new, mode = utils.str_match(scanner:peek_line() or "", DIFF_INDEX)
+    local index_old, index_new, mode = utils.str_match(scanner:peek_line() or '', DIFF_INDEX)
     if index_old then
       ret.index_old = index_old
       ret.index_new = index_new
@@ -372,13 +357,13 @@ local function parse_file_diff(scanner)
     end
 
     -- Paths
-    local path_old = utils.str_match(scanner:peek_line() or "", DIFF_PATH_OLD)
+    local path_old = utils.str_match(scanner:peek_line() or '', DIFF_PATH_OLD)
     if path_old then
       if not ret.path_old then
-        ret.path_old = path_old ~= "/dev/null" and path_old or nil
+        ret.path_old = path_old ~= '/dev/null' and path_old or nil
         scanner:skip_line()
-        local path_new = utils.str_match(scanner:next_line() or "", DIFF_PATH_NEW)
-        ret.path_new = path_new ~= "/dev/null" and path_new or nil
+        local path_new = utils.str_match(scanner:next_line() or '', DIFF_PATH_NEW)
+        ret.path_new = path_new ~= '/dev/null' and path_new or nil
       else
         scanner:skip_line(2)
       end
@@ -397,13 +382,16 @@ local function parse_file_diff(scanner)
     scanner:next_line() -- Current line is now the hunk header
 
     if old_row then
-      table.insert(ret.hunks, parse_diff_hunk(
-        scanner,
-        tonumber(old_row) or -1,
-        tonumber(old_size) or -1,
-        tonumber(new_row) or -1,
-        tonumber(new_size) or -1
-      ))
+      table.insert(
+        ret.hunks,
+        parse_diff_hunk(
+          scanner,
+          tonumber(old_row) or -1,
+          tonumber(old_size) or -1,
+          tonumber(new_row) or -1,
+          tonumber(new_size) or -1
+        )
+      )
     end
 
     line = scanner:peek_line()
@@ -422,9 +410,7 @@ function M.parse_diff(lines)
   while scanner:peek_line() do
     local line = scanner:next_line() --[[@as string ]]
     -- TODO: Diff headers and patch format can take a few different forms. I.e. combined diffs
-    if line:match(DIFF_HEADER) then
-      table.insert(ret, parse_file_diff(scanner))
-    end
+    if line:match(DIFF_HEADER) then table.insert(ret, parse_file_diff(scanner)) end
   end
 
   return ret
@@ -435,8 +421,8 @@ end
 ---@param version "old"|"new"
 ---@return string[]
 function M.diff_build_hunk(hunk, version)
-  local vcontent = version == "old" and hunk.old_content or hunk.new_content
-  local size = version == "old" and hunk.old_size or hunk.new_size
+  local vcontent = version == 'old' and hunk.old_content or hunk.new_content
+  local size = version == 'old' and hunk.old_size or hunk.new_size
   local common_idx = 1
   local chunk_idx = 1
 
@@ -486,24 +472,18 @@ function M.parse_conflicts(lines, winid)
   local has_start, has_base, has_sep = false, false, false
   local cur, cursor, cur_conflict, cur_idx
 
-  if winid and api.nvim_win_is_valid(winid) then
-    cursor = api.nvim_win_get_cursor(winid)
-  end
+  if winid and api.nvim_win_is_valid(winid) then cursor = api.nvim_win_get_cursor(winid) end
 
   local function handle(data)
     local first = math.min(
-     data.ours.first or math.huge,
-     data.base.first or math.huge,
-     data.theirs.first or math.huge
+      data.ours.first or math.huge,
+      data.base.first or math.huge,
+      data.theirs.first or math.huge
     )
 
     if first == math.huge then return end
 
-    local last = math.max(
-      data.ours.last or -1,
-      data.base.last or -1,
-      data.theirs.last or -1
-    )
+    local last = math.max(data.ours.last or -1, data.base.last or -1, data.theirs.last or -1)
 
     if last == -1 then return end
 
@@ -596,9 +576,7 @@ function M.parse_conflicts(lines, winid)
   handle(cur)
 
   if cursor and cur_idx then
-    if cursor[1] > ret[#ret].last then
-      cur_idx = #ret + 1
-    end
+    if cursor[1] > ret[#ret].last then cur_idx = #ret + 1 end
   end
 
   return ret, cur_conflict, cur_idx or 0
@@ -617,7 +595,6 @@ function M.check_semver(version, required)
   end
   return true
 end
-
 
 M.JobStatus = JobStatus
 return M

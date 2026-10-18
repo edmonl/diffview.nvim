@@ -1,9 +1,9 @@
-local oop = require("diffview.oop")
+local oop = require('diffview.oop')
 
 local M = {}
 
 ---@class Model : diffview.Object
-local Model = oop.create_class("Model")
+local Model = oop.create_class('Model')
 
 ---@diagnostic disable unused-local
 

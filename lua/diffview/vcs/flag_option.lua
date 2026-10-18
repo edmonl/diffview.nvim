@@ -1,7 +1,7 @@
-local lazy = require("diffview.lazy")
-local oop = require("diffview.oop")
+local lazy = require('diffview.lazy')
+local oop = require('diffview.oop')
 
-local utils = lazy.require("diffview.utils") ---@module "diffview.utils"
+local utils = lazy.require('diffview.utils') ---@module "diffview.utils"
 
 local M = {}
 
@@ -19,7 +19,7 @@ local M = {}
 ---@field display_fmt string
 ---@field select? string[]
 ---@field completion? string|FlagOption.CompletionWrapper
-local FlagOption = oop.create_class("FlagOption")
+local FlagOption = oop.create_class('FlagOption')
 
 ---@class FlagOption.init.Opt
 ---@field flag_name string
@@ -50,17 +50,20 @@ function FlagOption:init(keymap, flag_name, desc, opt)
   self.keymap = keymap
   self.flag_name = flag_name
   self.desc = desc
-  self.key = opt.key or utils.str_match(flag_name, {
-    "^%-%-?([^=]+)=?",
-    "^%+%+?([^=]+)=?",
-  }):gsub("%-", "_")
+  self.key = opt.key
+    or utils
+      .str_match(flag_name, {
+        '^%-%-?([^=]+)=?',
+        '^%+%+?([^=]+)=?',
+      })
+      :gsub('%-', '_')
   self.select = opt.select
   self.completion = opt.completion
   self.expect_list = utils.sate(opt.expect_list, false)
-  self.prompt_label = opt.prompt_label or ""
-  self.prompt_fmt = opt.prompt_fmt or "${label}${flag_name}"
-  self.value_fmt = opt.value_fmt or "${flag_name}${value}"
-  self.display_fmt = opt.display_fmt or "${values}"
+  self.prompt_label = opt.prompt_label or ''
+  self.prompt_fmt = opt.prompt_fmt or '${label}${flag_name}'
+  self.value_fmt = opt.value_fmt or '${flag_name}${value}'
+  self.display_fmt = opt.display_fmt or '${values}'
   self.transform = opt.transform or self.transform
   self.render_prompt = opt.render_prompt or self.render_prompt
   self.render_value = opt.render_value or self.render_value
@@ -73,7 +76,7 @@ end
 function FlagOption:prepare_values(values)
   if values == nil then
     return {}
-  elseif type(values) ~= "table" then
+  elseif type(values) ~= 'table' then
     return { tostring(values) }
   else
     return vim.tbl_map(tostring, values)
@@ -84,23 +87,25 @@ end
 ---@param values any|any[]
 function FlagOption:transform(values)
   return utils.tbl_fmap(self:prepare_values(values), function(v)
-    v = utils.str_match(v, { "^" .. vim.pesc(self.flag_name) .. "(.*)", ".*" })
-    if v == "" then return nil end
+    v = utils.str_match(v, { '^' .. vim.pesc(self.flag_name) .. '(.*)', '.*' })
+    if v == '' then return nil end
     return v
   end)
 end
 
 function FlagOption:render_prompt()
-  return utils.str_template(self.prompt_fmt, {
-    label = self.prompt_label and self.prompt_label .. " " or "",
-    flag_name = self.flag_name .. " ",
-  }):sub(1, -2)
+  return utils
+    .str_template(self.prompt_fmt, {
+      label = self.prompt_label and self.prompt_label .. ' ' or '',
+      flag_name = self.flag_name .. ' ',
+    })
+    :sub(1, -2)
 end
 
 ---Render a single option value
 ---@param value string
 function FlagOption:render_value(value)
-  value = value:gsub("\\", "\\\\")
+  value = value:gsub('\\', '\\\\')
   return utils.str_template(self.value_fmt, {
     flag_name = self.flag_name,
     value = utils.str_quote(value, { only_if_whitespace = true }),
@@ -113,18 +118,15 @@ end
 ---@return string rendered_text
 function FlagOption:render_display(values)
   values = self:prepare_values(values)
-  if #values == 0 or (#values == 1 and values[1] == "") then
-    return true, self.flag_name
-  end
+  if #values == 0 or (#values == 1 and values[1] == '') then return true, self.flag_name end
 
-  local quoted = table.concat(vim.tbl_map(function(v)
-    return self:render_value(v)
-  end, values), " ")
+  local quoted = table.concat(vim.tbl_map(function(v) return self:render_value(v) end, values), ' ')
 
-  return false, utils.str_template(self.display_fmt, {
-    flag_name = self.flag_name,
-    values = quoted,
-  })
+  return false,
+    utils.str_template(self.display_fmt, {
+      flag_name = self.flag_name,
+      values = quoted,
+    })
 end
 
 ---Render the default text for |input()|.
@@ -132,15 +134,11 @@ end
 function FlagOption:render_default(values)
   values = self:prepare_values(values)
 
-  local ret = vim.tbl_map(function(v)
-    return self:render_value(v)
-  end, values)
+  local ret = vim.tbl_map(function(v) return self:render_value(v) end, values)
 
-  if #ret > 0 then
-    ret[1] = ret[1]:match("^" .. vim.pesc(self.flag_name) .. "(.*)") or ret[1]
-  end
+  if #ret > 0 then ret[1] = ret[1]:match('^' .. vim.pesc(self.flag_name) .. '(.*)') or ret[1] end
 
-  return table.concat(ret, " ")
+  return table.concat(ret, ' ')
 end
 
 M.FlagOption = FlagOption

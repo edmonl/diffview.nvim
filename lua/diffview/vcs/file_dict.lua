@@ -1,5 +1,5 @@
-local oop = require("diffview.oop")
-local FileTree = require("diffview.ui.models.file_tree.file_tree").FileTree
+local oop = require('diffview.oop')
+local FileTree = require('diffview.ui.models.file_tree.file_tree').FileTree
 local M = {}
 
 ---@alias vcs.FileKind "conflicting"|"working"|"staged"
@@ -13,7 +13,7 @@ local M = {}
 ---@field conflicting_tree FileTree
 ---@field working_tree FileTree
 ---@field staged_tree FileTree
-local FileDict = oop.create_class("FileDict")
+local FileDict = oop.create_class('FileDict')
 
 ---FileDict constructor.
 function FileDict:init()
@@ -25,13 +25,11 @@ function FileDict:init()
 end
 
 function FileDict:__index(k)
-  if type(k) == "number" then
+  if type(k) == 'number' then
     local offset = 0
 
     for _, set in ipairs(self.sets) do
-      if k - offset <= #set then
-        return set[k - offset]
-      end
+      if k - offset <= #set then return set[k - offset] end
 
       offset = offset + #set
     end
@@ -48,7 +46,9 @@ end
 
 function FileDict:len()
   local l = 0
-  for _, set in ipairs(self.sets) do l = l + #set end
+  for _, set in ipairs(self.sets) do
+    l = l + #set
+  end
 
   return l
 end
@@ -61,9 +61,7 @@ function FileDict:iter()
   return function()
     i = i + 1
 
-    if i <= n then
-      return i, self[i]
-    end
+    if i <= n then return i, self[i] end
   end
 end
 

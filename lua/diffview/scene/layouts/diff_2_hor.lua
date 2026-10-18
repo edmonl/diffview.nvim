@@ -1,7 +1,7 @@
-local async = require("diffview.async")
-local Window = require("diffview.scene.window").Window
-local Diff2 = require("diffview.scene.layouts.diff_2").Diff2
-local oop = require("diffview.oop")
+local async = require('diffview.async')
+local Window = require('diffview.scene.window').Window
+local Diff2 = require('diffview.scene.layouts.diff_2').Diff2
+local oop = require('diffview.oop')
 
 local api = vim.api
 local await = async.await
@@ -9,9 +9,9 @@ local await = async.await
 local M = {}
 
 ---@class Diff2Hor : Diff2
-local Diff2Hor = oop.create_class("Diff2Hor", Diff2)
+local Diff2Hor = oop.create_class('Diff2Hor', Diff2)
 
-Diff2Hor.name = "diff2_horizontal"
+Diff2Hor.name = 'diff2_horizontal'
 
 ---@class Diff2Hor.init.Opt
 ---@field a vcs.File
@@ -20,9 +20,7 @@ Diff2Hor.name = "diff2_horizontal"
 ---@field winid_b integer
 
 ---@param opt Diff2Hor.init.Opt
-function Diff2Hor:init(opt)
-  self:super(opt)
-end
+function Diff2Hor:init(opt) self:super(opt) end
 
 ---@override
 ---@param self Diff2Hor
@@ -32,16 +30,14 @@ Diff2Hor.create = async.void(function(self, pivot)
   local curwin
 
   pivot = pivot or self:find_pivot()
-  assert(api.nvim_win_is_valid(pivot), "Layout creation requires a valid window pivot!")
+  assert(api.nvim_win_is_valid(pivot), 'Layout creation requires a valid window pivot!')
 
   for _, win in ipairs(self.windows) do
-    if win.id ~= pivot then
-      win:close(true)
-    end
+    if win.id ~= pivot then win:close(true) end
   end
 
   api.nvim_win_call(pivot, function()
-    vim.cmd("aboveleft vsp")
+    vim.cmd('aboveleft vsp')
     curwin = api.nvim_get_current_win()
 
     if self.a then
@@ -52,7 +48,7 @@ Diff2Hor.create = async.void(function(self, pivot)
   end)
 
   api.nvim_win_call(pivot, function()
-    vim.cmd("aboveleft vsp")
+    vim.cmd('aboveleft vsp')
     curwin = api.nvim_get_current_win()
 
     if self.b then

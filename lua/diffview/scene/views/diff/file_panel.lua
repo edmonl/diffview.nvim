@@ -1,8 +1,8 @@
-local config = require("diffview.config")
-local oop = require("diffview.oop")
-local renderer = require("diffview.renderer")
-local utils = require("diffview.utils")
-local Panel = require("diffview.ui.panel").Panel
+local config = require('diffview.config')
+local oop = require('diffview.oop')
+local renderer = require('diffview.renderer')
+local utils = require('diffview.utils')
+local Panel = require('diffview.ui.panel').Panel
 local api = vim.api
 local M = {}
 
@@ -22,24 +22,24 @@ local M = {}
 ---@field components CompStruct
 ---@field constrain_cursor function
 ---@field help_mapping string
-local FilePanel = oop.create_class("FilePanel", Panel)
+local FilePanel = oop.create_class('FilePanel', Panel)
 
-FilePanel.winopts = vim.tbl_extend("force", Panel.winopts, {
+FilePanel.winopts = vim.tbl_extend('force', Panel.winopts, {
   cursorline = true,
   winhl = {
-    "EndOfBuffer:DiffviewEndOfBuffer",
-    "Normal:DiffviewNormal",
-    "CursorLine:DiffviewCursorLine",
-    "WinSeparator:DiffviewWinSeparator",
-    "SignColumn:DiffviewNormal",
-    "StatusLine:DiffviewStatusLine",
-    "StatusLineNC:DiffviewStatuslineNC",
-    opt = { method = "prepend" },
+    'EndOfBuffer:DiffviewEndOfBuffer',
+    'Normal:DiffviewNormal',
+    'CursorLine:DiffviewCursorLine',
+    'WinSeparator:DiffviewWinSeparator',
+    'SignColumn:DiffviewNormal',
+    'StatusLine:DiffviewStatusLine',
+    'StatusLineNC:DiffviewStatuslineNC',
+    opt = { method = 'prepend' },
   },
 })
 
-FilePanel.bufopts = vim.tbl_extend("force", Panel.bufopts, {
-  filetype = "DiffviewFiles",
+FilePanel.bufopts = vim.tbl_extend('force', Panel.bufopts, {
+  filetype = 'DiffviewFiles',
 })
 
 ---FilePanel constructor.
@@ -50,7 +50,7 @@ function FilePanel:init(adapter, files, path_args, rev_pretty_name)
   local conf = config.get_config()
   self:super({
     config = conf.file_panel.win_config,
-    bufname = "DiffviewFilePanel",
+    bufname = 'DiffviewFilePanel',
   })
   self.adapter = adapter
   self.files = files
@@ -59,17 +59,15 @@ function FilePanel:init(adapter, files, path_args, rev_pretty_name)
   self.listing_style = conf.file_panel.listing_style
   self.tree_options = conf.file_panel.tree_options
 
-  self:on_autocmd("BufNew", {
-    callback = function()
-      self:setup_buffer()
-    end,
+  self:on_autocmd('BufNew', {
+    callback = function() self:setup_buffer() end,
   })
 end
 
 ---@override
 function FilePanel:open()
   FilePanel.super_class.open(self)
-  vim.cmd("wincmd =")
+  vim.cmd('wincmd =')
 end
 
 function FilePanel:setup_buffer()
@@ -77,7 +75,7 @@ function FilePanel:setup_buffer()
 
   local default_opt = { silent = true, nowait = true, buffer = self.bufid }
   for _, mapping in ipairs(conf.keymaps.file_panel) do
-    local opt = vim.tbl_extend("force", default_opt, mapping[4] or {}, { buffer = self.bufid })
+    local opt = vim.tbl_extend('force', default_opt, mapping[4] or {}, { buffer = self.bufid })
     vim.keymap.set(mapping[1], mapping[2], mapping[3], opt)
   end
 
@@ -90,53 +88,52 @@ function FilePanel:update_components()
   local working_files
   local staged_files
 
-  if self.listing_style == "list" then
-    conflicting_files = { name = "files" }
-    working_files = { name = "files" }
-    staged_files = { name = "files" }
+  if self.listing_style == 'list' then
+    conflicting_files = { name = 'files' }
+    working_files = { name = 'files' }
+    staged_files = { name = 'files' }
 
     for _, file in ipairs(self.files.conflicting) do
       table.insert(conflicting_files, {
-        name = "file",
+        name = 'file',
         context = file,
       })
     end
 
     for _, file in ipairs(self.files.working) do
       table.insert(working_files, {
-        name = "file",
+        name = 'file',
         context = file,
       })
     end
 
     for _, file in ipairs(self.files.staged) do
       table.insert(staged_files, {
-        name = "file",
+        name = 'file',
         context = file,
       })
     end
-
-  elseif self.listing_style == "tree" then
+  elseif self.listing_style == 'tree' then
     self.files.conflicting_tree:update_statuses()
     self.files.working_tree:update_statuses()
     self.files.staged_tree:update_statuses()
 
     conflicting_files = utils.tbl_merge(
-      { name = "files" },
+      { name = 'files' },
       self.files.conflicting_tree:create_comp_schema({
         flatten_dirs = self.tree_options.flatten_dirs,
       })
     )
 
     working_files = utils.tbl_merge(
-      { name = "files" },
+      { name = 'files' },
       self.files.working_tree:create_comp_schema({
         flatten_dirs = self.tree_options.flatten_dirs,
       })
     )
 
     staged_files = utils.tbl_merge(
-      { name = "files" },
+      { name = 'files' },
       self.files.staged_tree:create_comp_schema({
         flatten_dirs = self.tree_options.flatten_dirs,
       })
@@ -145,29 +142,29 @@ function FilePanel:update_components()
 
   ---@type CompStruct
   self.components = self.render_data:create_component({
-    { name = "path" },
+    { name = 'path' },
     {
-      name = "conflicting",
-      { name = "title" },
+      name = 'conflicting',
+      { name = 'title' },
       conflicting_files,
-      { name = "margin" },
+      { name = 'margin' },
     },
     {
-      name = "working",
-      { name = "title" },
+      name = 'working',
+      { name = 'title' },
       working_files,
-      { name = "margin" },
+      { name = 'margin' },
     },
     {
-      name = "staged",
-      { name = "title" },
+      name = 'staged',
+      { name = 'title' },
       staged_files,
-      { name = "margin" },
+      { name = 'margin' },
     },
     {
-      name = "info",
-      { name = "title" },
-      { name = "entries" },
+      name = 'info',
+      { name = 'title' },
+      { name = 'entries' },
     },
   })
 
@@ -180,7 +177,7 @@ end
 
 ---@return FileEntry[]
 function FilePanel:ordered_file_list()
-  if self.listing_style == "list" then
+  if self.listing_style == 'list' then
     local list = {}
 
     for _, file in self.files:iter() do
@@ -195,21 +192,15 @@ function FilePanel:ordered_file_list()
       self.files.staged_tree.root:leaves()
     )
 
-    return vim.tbl_map(function(node)
-      return node.data
-    end, nodes) --[[@as vector ]]
+    return vim.tbl_map(function(node) return node.data end, nodes) --[[@as vector ]]
   end
 end
 
 function FilePanel:set_cur_file(file)
-  if self.cur_file then
-    self.cur_file:set_active(false)
-  end
+  if self.cur_file then self.cur_file:set_active(false) end
 
   self.cur_file = file
-  if self.cur_file then
-    self.cur_file:set_active(true)
-  end
+  if self.cur_file then self.cur_file:set_active(true) end
 end
 
 function FilePanel:prev_file()
@@ -247,9 +238,9 @@ function FilePanel:get_item_at_cursor()
 
   local line = api.nvim_win_get_cursor(self.winid)[1]
   local comp = self.components.comp:get_comp_on_line(line)
-  if comp and comp.name == "file" then
+  if comp and comp.name == 'file' then
     return comp.context
-  elseif comp and comp.name == "dir_name" then
+  elseif comp and comp.name == 'dir_name' then
     return comp.parent.context
   end
 end
@@ -258,7 +249,7 @@ end
 ---@return DirData?
 ---@return RenderComponent?
 function FilePanel:get_dir_at_cursor()
-  if self.listing_style ~= "tree" then return end
+  if self.listing_style ~= 'tree' then return end
   if not self:is_open() and self:buf_loaded() then return end
 
   local line = api.nvim_win_get_cursor(self.winid)[1]
@@ -266,21 +257,19 @@ function FilePanel:get_dir_at_cursor()
 
   if not comp then return end
 
-  if comp.name == "dir_name" then
+  if comp.name == 'dir_name' then
     local dir_comp = comp.parent
     return dir_comp.context, dir_comp
-  elseif comp.name == "file" then
+  elseif comp.name == 'file' then
     local dir_comp = comp.parent.parent
     return dir_comp.context, dir_comp
   end
 end
 
 function FilePanel:highlight_file(file)
-  if not (self:is_open() and self:buf_loaded()) then
-    return
-  end
+  if not (self:is_open() and self:buf_loaded()) then return end
 
-  if self.listing_style == "list" then
+  if self.listing_style == 'list' then
     for _, file_list in ipairs({
       self.components.conflicting.files,
       self.components.working.files,
@@ -292,7 +281,6 @@ function FilePanel:highlight_file(file)
         end
       end
     end
-
   else -- tree
     for _, comp_struct in ipairs({
       self.components.conflicting.files,
@@ -304,13 +292,13 @@ function FilePanel:highlight_file(file)
           local was_concealed = false
           local dir = cur.parent.parent
 
-          while dir and dir.name == "directory" do
+          while dir and dir.name == 'directory' do
             if dir.context and dir.context.collapsed then
               was_concealed = true
               dir.context.collapsed = false
             end
 
-            dir = utils.tbl_access(dir, { "parent", "parent" })
+            dir = utils.tbl_access(dir, { 'parent', 'parent' })
           end
 
           if was_concealed then
@@ -332,15 +320,11 @@ function FilePanel:highlight_file(file)
 end
 
 function FilePanel:highlight_cur_file()
-  if self.cur_file then
-    self:highlight_file(self.cur_file)
-  end
+  if self.cur_file then self:highlight_file(self.cur_file) end
 end
 
 function FilePanel:highlight_prev_file()
-  if not (self:is_open() and self:buf_loaded()) or self.files:len() == 0 then
-    return
-  end
+  if not (self:is_open() and self:buf_loaded()) or self.files:len() == 0 then return end
 
   pcall(
     api.nvim_win_set_cursor,
@@ -351,9 +335,7 @@ function FilePanel:highlight_prev_file()
 end
 
 function FilePanel:highlight_next_file()
-  if not (self:is_open() and self:buf_loaded()) or self.files:len() == 0 then
-    return
-  end
+  if not (self:is_open() and self:buf_loaded()) or self.files:len() == 0 then return end
 
   pcall(api.nvim_win_set_cursor, self.winid, {
     self.constrain_cursor(self.winid, vim.v.count1),
@@ -363,9 +345,7 @@ function FilePanel:highlight_next_file()
 end
 
 function FilePanel:reconstrain_cursor()
-  if not (self:is_open() and self:buf_loaded()) or self.files:len() == 0 then
-    return
-  end
+  if not (self:is_open() and self:buf_loaded()) or self.files:len() == 0 then return end
 
   pcall(api.nvim_win_set_cursor, self.winid, {
     self.constrain_cursor(self.winid, 0),
@@ -376,7 +356,7 @@ end
 ---@param item DirData|any
 ---@param open boolean
 function FilePanel:set_item_fold(item, open)
-  if type(item.collapsed) == "boolean" and open == item.collapsed then
+  if type(item.collapsed) == 'boolean' and open == item.collapsed then
     item.collapsed = not open
     self:render()
     self:redraw()
@@ -392,13 +372,9 @@ function FilePanel:set_item_fold(item, open)
   end
 end
 
-function FilePanel:toggle_item_fold(item)
-  self:set_item_fold(item, item.collapsed)
-end
+function FilePanel:toggle_item_fold(item) self:set_item_fold(item, item.collapsed) end
 
-function FilePanel:render()
-  require("diffview.scene.views.diff.render")(self)
-end
+function FilePanel:render() require('diffview.scene.views.diff.render')(self) end
 
 M.FilePanel = FilePanel
 return M

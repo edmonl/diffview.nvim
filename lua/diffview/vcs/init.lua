@@ -17,9 +17,7 @@ local M = {}
 function M.get_adapter(opt)
   local adapter_kinds = { GitAdapter, HgAdapter }
 
-  if not opt.cmd_ctx then
-    opt.cmd_ctx = {}
-  end
+  if not opt.cmd_ctx then opt.cmd_ctx = {} end
 
   for _, kind in ipairs(adapter_kinds) do
     local path_args
@@ -43,7 +41,7 @@ function M.get_adapter(opt)
     ::continue::
   end
 
-  return "Not a repo (or any parent), or no supported VCS adapter!"
+  return 'Not a repo (or any parent), or no supported VCS adapter!'
 end
 
 return M

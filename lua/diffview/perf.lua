@@ -1,5 +1,5 @@
-local oop = require("diffview.oop")
-local utils = require("diffview.utils")
+local oop = require('diffview.oop')
+local utils = require('diffview.utils')
 
 local uv = vim.loop
 
@@ -12,7 +12,7 @@ local M = {}
 ---@field last integer Stop time (ns)
 ---@field final_time number Final time (ms)
 ---@field laps number[] List of lap times (ms)
-local PerfTimer = oop.create_class("PerfTimer")
+local PerfTimer = oop.create_class('PerfTimer')
 
 ---PerfTimer constructor.
 ---@param subject string|nil
@@ -47,24 +47,22 @@ function PerfTimer:time()
 end
 
 function PerfTimer:__tostring()
-  if not self.final_time then
-    self:time()
-  end
+  if not self.final_time then self:time() end
 
   if #self.laps == 0 then
     return string.format(
-      "%s %.3f ms",
-      utils.str_right_pad((self.subject or "TIME") .. ":", 24),
+      '%s %.3f ms',
+      utils.str_right_pad((self.subject or 'TIME') .. ':', 24),
       self.final_time
     )
   else
-    local s = (self.subject or "LAPS") .. ":\n"
+    local s = (self.subject or 'LAPS') .. ':\n'
     local last = 0
 
     for _, lap in ipairs(self.laps) do
       s = s
         .. string.format(
-          ">> %s %.3f ms\t(%.3f ms)\n",
+          '>> %s %.3f ms\t(%.3f ms)\n',
           utils.str_right_pad(lap[1], 36),
           lap[2],
           lap[2] - last
@@ -72,7 +70,8 @@ function PerfTimer:__tostring()
       last = lap[2]
     end
 
-    return s .. string.format("== %s %.3f ms", utils.str_right_pad("FINAL TIME", 36), self.final_time)
+    return s
+      .. string.format('== %s %.3f ms', utils.str_right_pad('FINAL TIME', 36), self.final_time)
   end
 end
 
@@ -85,7 +84,7 @@ function PerfTimer.difference(a, b)
   local delta = (b.final_time - a.final_time) / a.final_time
   local negative = delta < 0
 
-  return string.format("%s%.2f%%", not negative and "+" or "", delta * 100)
+  return string.format('%s%.2f%%', not negative and '+' or '', delta * 100)
 end
 
 M.PerfTimer = PerfTimer

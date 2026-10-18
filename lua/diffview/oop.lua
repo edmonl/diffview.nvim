@@ -1,13 +1,11 @@
-local lazy = require("diffview.lazy")
-local utils = lazy.require("diffview.utils") ---@module "diffview.utils"
+local lazy = require('diffview.lazy')
+local utils = lazy.require('diffview.utils') ---@module "diffview.utils"
 
 local fmt = string.format
 
 local M = {}
 
-function M.abstract_stub()
-  error("Unimplemented abstract method!")
-end
+function M.abstract_stub() error('Unimplemented abstract method!') end
 
 ---@generic T
 ---@param t T
@@ -22,28 +20,26 @@ end
 ---@param instance table
 ---@return function
 local function wrap_mt_func(func, instance)
-  return function(_, k)
-    return func(instance, k)
-  end
+  return function(_, k) return func(instance, k) end
 end
 
 local mt_func_names = {
-  "__index",
-  "__tostring",
-  "__eq",
-  "__add",
-  "__sub",
-  "__mul",
-  "__div",
-  "__mod",
-  "__pow",
-  "__unm",
-  "__len",
-  "__lt",
-  "__le",
-  "__concat",
-  "__newindex",
-  "__call",
+  '__index',
+  '__tostring',
+  '__eq',
+  '__add',
+  '__sub',
+  '__mul',
+  '__div',
+  '__mod',
+  '__pow',
+  '__unm',
+  '__len',
+  '__lt',
+  '__le',
+  '__concat',
+  '__newindex',
+  '__call',
 }
 
 local function new_instance(class, ...)
@@ -53,7 +49,7 @@ local function new_instance(class, ...)
   for _, mt_name in ipairs(mt_func_names) do
     local class_mt_func = class[mt_name]
 
-    if type(class_mt_func) == "function" then
+    if type(class_mt_func) == 'function' then
       mt[mt_name] = wrap_mt_func(class_mt_func, inst)
     elseif class_mt_func ~= nil then
       mt[mt_name] = class_mt_func
@@ -66,9 +62,7 @@ local function new_instance(class, ...)
   return self
 end
 
-local function tostring(class)
-  return fmt("<class %s>", class.__name)
-end
+local function tostring(class) return fmt('<class %s>', class.__name) end
 
 ---@generic T : diffview.Object
 ---@generic U : diffview.Object
@@ -78,25 +72,22 @@ end
 function M.create_class(name, super_class)
   super_class = super_class or M.Object
 
-  return setmetatable(
-    {
-      __name = name,
-      super_class = super_class,
-    },
-    {
-      __index = super_class,
-      __call = new_instance,
-      __tostring = tostring,
-    }
-  )
+  return setmetatable({
+    __name = name,
+    super_class = super_class,
+  }, {
+    __index = super_class,
+    __call = new_instance,
+    __tostring = tostring,
+  })
 end
 
 local function classm_safeguard(x)
-  assert(x.class == nil, "Class method should not be invoked from an instance!")
+  assert(x.class == nil, 'Class method should not be invoked from an instance!')
 end
 
 local function instancem_safeguard(x)
-  assert(type(x.class) == "table", "Instance method must be called from a class instance!")
+  assert(type(x.class) == 'table', 'Instance method must be called from a class instance!')
 end
 
 ---@class diffview.Object
@@ -104,12 +95,10 @@ end
 ---@field private __init_caller? table
 ---@field class table|diffview.Object
 ---@field super_class table|diffview.Object
-local Object = M.create_class("Object")
+local Object = M.create_class('Object')
 M.Object = Object
 
-function Object:__tostring()
-  return fmt("<a %s>", self.class.__name)
-end
+function Object:__tostring() return fmt('<a %s>', self.class.__name) end
 
 -- ### CLASS METHODS ###
 
@@ -137,7 +126,7 @@ function Object:classpath()
   local cur = self.super_class
 
   while cur do
-    ret = cur.__name .. "." .. ret
+    ret = cur.__name .. '.' .. ret
     cur = cur.super_class
   end
 
@@ -187,14 +176,14 @@ end
 ---@param x any
 ---@return boolean
 function M.is_class(x)
-  if type(x) ~= "table" then return false end
-  return type(rawget(x, "__name")) == "string" and x.instanceof == Object.instanceof
+  if type(x) ~= 'table' then return false end
+  return type(rawget(x, '__name')) == 'string' and x.instanceof == Object.instanceof
 end
 
 ---@param x any
 ---@return boolean
 function M.is_instance(x)
-  if type(x) ~= "table" then return false end
+  if type(x) ~= 'table' then return false end
   return M.is_class(x.class)
 end
 
@@ -203,7 +192,7 @@ end
 ---@field public name? string
 ---@field public id integer
 ---@field private _id_counter integer
-local Symbol = M.create_class("Symbol")
+local Symbol = M.create_class('Symbol')
 M.Symbol = Symbol
 
 ---@private
@@ -220,7 +209,7 @@ function Symbol:__tostring()
   if self.name then
     return fmt("<Symbol('%s)>", self.name)
   else
-    return fmt("<Symbol(#%d)>", self.id)
+    return fmt('<Symbol(#%d)>', self.id)
   end
 end
 

@@ -1,5 +1,5 @@
-local async = require("diffview.async")
-local utils = require("diffview.utils")
+local async = require('diffview.async')
+local utils = require('diffview.utils')
 
 local await = async.await
 local uv = vim.loop
@@ -16,21 +16,17 @@ local M = {}
 function M.try_close(...)
   local args = { ... }
 
-  for i = 1, select("#", ...) do
+  for i = 1, select('#', ...) do
     local handle = args[i]
 
-    if handle and not handle:is_closing() then
-      handle:close()
-    end
+    if handle and not handle:is_closing() then handle:close() end
   end
 end
 
 ---@return ManagedFn
 local function wrap(timer, fn)
   return setmetatable({}, {
-    __call = function(_, ...)
-      fn(...)
-    end,
+    __call = function(_, ...) fn(...) end,
     __index = {
       close = function()
         timer:stop()
@@ -125,17 +121,13 @@ function M.throttle_trailing(ms, rush_first, fn)
   local throttled_fn, args
 
   throttled_fn = wrap(timer, function(...)
-    if lock or (not rush_first and args == nil) then
-      args = utils.tbl_pack(...)
-    end
+    if lock or (not rush_first and args == nil) then args = utils.tbl_pack(...) end
 
     if lock then return end
 
     lock = true
 
-    if rush_first then
-      fn(...)
-    end
+    if rush_first then fn(...) end
 
     timer:start(ms, 0, function()
       lock = false
@@ -188,9 +180,7 @@ function M.throttle_render(framerate, fn)
 
     lock = false
 
-    if args ~= nil then
-      throttled_fn(utils.tbl_unpack(args))
-    end
+    if args ~= nil then throttled_fn(utils.tbl_unpack(args)) end
   end)
 
   return throttled_fn
@@ -212,9 +202,7 @@ function M.set_interval(func, delay)
 
   timer:start(delay, delay, function()
     local should_close = func()
-    if type(should_close) == "boolean" and should_close then
-      ret.close()
-    end
+    if type(should_close) == 'boolean' and should_close then ret.close() end
   end)
 
   return ret
@@ -243,4 +231,3 @@ function M.set_timeout(func, delay)
 end
 
 return M
-

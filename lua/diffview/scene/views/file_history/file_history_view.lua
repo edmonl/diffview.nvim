@@ -1,14 +1,15 @@
-local async = require("diffview.async")
-local lazy = require("diffview.lazy")
-local oop = require("diffview.oop")
+local async = require('diffview.async')
+local lazy = require('diffview.lazy')
+local oop = require('diffview.oop')
 
-local CommitLogPanel = lazy.access("diffview.ui.panels.commit_log_panel", "CommitLogPanel") ---@type CommitLogPanel|LazyModule
-local EventName = lazy.access("diffview.events", "EventName") ---@type EventName|LazyModule
-local FileHistoryPanel = lazy.access("diffview.scene.views.file_history.file_history_panel", "FileHistoryPanel") ---@type FileHistoryPanel|LazyModule
-local JobStatus = lazy.access("diffview.vcs.utils", "JobStatus") ---@type JobStatus|LazyModule
-local LogEntry = lazy.access("diffview.vcs.log_entry", "LogEntry") ---@type LogEntry|LazyModule
-local StandardView = lazy.access("diffview.scene.views.standard.standard_view", "StandardView") ---@type StandardView|LazyModule
-local config = lazy.require("diffview.config") ---@module "diffview.config"
+local CommitLogPanel = lazy.access('diffview.ui.panels.commit_log_panel', 'CommitLogPanel') ---@type CommitLogPanel|LazyModule
+local EventName = lazy.access('diffview.events', 'EventName') ---@type EventName|LazyModule
+local FileHistoryPanel =
+  lazy.access('diffview.scene.views.file_history.file_history_panel', 'FileHistoryPanel') ---@type FileHistoryPanel|LazyModule
+local JobStatus = lazy.access('diffview.vcs.utils', 'JobStatus') ---@type JobStatus|LazyModule
+local LogEntry = lazy.access('diffview.vcs.log_entry', 'LogEntry') ---@type LogEntry|LazyModule
+local StandardView = lazy.access('diffview.scene.views.standard.standard_view', 'StandardView') ---@type StandardView|LazyModule
+local config = lazy.require('diffview.config') ---@module "diffview.config"
 
 local api = vim.api
 local await = async.await
@@ -21,7 +22,7 @@ local M = {}
 ---@field panel FileHistoryPanel
 ---@field commit_log_panel CommitLogPanel
 ---@field valid boolean
-local FileHistoryView = oop.create_class("FileHistoryView", StandardView.__get())
+local FileHistoryView = oop.create_class('FileHistoryView', StandardView.__get())
 
 function FileHistoryView:init(opt)
   self.valid = false
@@ -41,7 +42,7 @@ end
 
 function FileHistoryView:post_open()
   self.commit_log_panel = CommitLogPanel(self.adapter, {
-    name = ("diffview://%s/log/%d/%s"):format(self.adapter.ctx.dir, self.tabpage, "commit_log"),
+    name = ('diffview://%s/log/%d/%s'):format(self.adapter.ctx.dir, self.tabpage, 'commit_log'),
   })
 
   self:init_event_listeners()
@@ -53,9 +54,7 @@ function FileHistoryView:post_open()
     self.panel:update_entries(function(entries, status)
       if status < JobStatus.ERROR and not self.panel:cur_file() then
         local file = self.panel:next_file()
-        if file then
-          self:set_file(file)
-        end
+        if file then self:set_file(file) end
       end
     end)
 
@@ -78,9 +77,7 @@ function FileHistoryView:close()
 end
 
 ---@return FileEntry?
-function FileHistoryView:cur_file()
-  return self.panel.cur_item[2]
-end
+function FileHistoryView:cur_file() return self.panel.cur_item[2] end
 
 ---@private
 ---@param self FileHistoryView
@@ -88,11 +85,11 @@ end
 FileHistoryView._set_file = async.void(function(self, file)
   self.panel:render()
   self.panel:redraw()
-  vim.cmd("redraw")
+  vim.cmd('redraw')
 
   self.cur_layout:detach_files()
   local cur_entry = self.cur_entry
-  self.emitter:emit("file_open_pre", file, cur_entry)
+  self.emitter:emit('file_open_pre', file, cur_entry)
   self.nulled = false
 
   await(self:use_entry(file))
@@ -110,17 +107,17 @@ FileHistoryView._set_file = async.void(function(self, file)
       file:update_patch_folds(diff)
 
       for _, win in ipairs(self.cur_layout.windows) do
-        win:use_winopts({ foldmethod = "manual" })
+        win:use_winopts({ foldmethod = 'manual' })
         win:apply_custom_folds()
       end
     end
   end
 
-  self.emitter:emit("file_open_post", file, cur_entry)
+  self.emitter:emit('file_open_post', file, cur_entry)
 
   if not self.cur_entry.opened then
     self.cur_entry.opened = true
-    DiffviewGlobal.emitter:emit("file_open_new", file)
+    DiffviewGlobal.emitter:emit('file_open_new', file)
   end
 end)
 
@@ -173,22 +170,17 @@ FileHistoryView.set_file = async.void(function(self, file, focus)
   local cur_entry = self.panel.cur_item[1]
 
   if entry then
-    if cur_entry and entry ~= cur_entry then
-      self.panel:set_entry_fold(cur_entry, false)
-    end
+    if cur_entry and entry ~= cur_entry then self.panel:set_entry_fold(cur_entry, false) end
 
     self.panel:set_cur_item({ entry, file })
     self.panel:highlight_item(file)
     self.nulled = false
     await(self:_set_file(file))
 
-    if focus then
-      api.nvim_set_current_win(self.cur_layout:get_main_win().id)
-    end
+    if focus then api.nvim_set_current_win(self.cur_layout:get_main_win().id) end
   end
   ---@diagnostic enable: invisible
 end)
-
 
 ---Ensures there are files to load, and loads the null buffer otherwise.
 ---@return boolean
@@ -196,9 +188,7 @@ function FileHistoryView:file_safeguard()
   if self.panel:num_items() == 0 then
     local cur = self.panel.cur_item[2]
 
-    if cur then
-      cur.layout:detach_files()
-    end
+    if cur then cur.layout:detach_files() end
 
     self.cur_layout:open_null()
     self.nulled = true
@@ -209,12 +199,10 @@ function FileHistoryView:file_safeguard()
   return false
 end
 
-function FileHistoryView:on_files_staged(callback)
-  self.emitter:on(EventName.FILES_STAGED, callback)
-end
+function FileHistoryView:on_files_staged(callback) self.emitter:on(EventName.FILES_STAGED, callback) end
 
 function FileHistoryView:init_event_listeners()
-  local listeners = require("diffview.scene.views.file_history.listeners")(self)
+  local listeners = require('diffview.scene.views.file_history.listeners')(self)
   for event, callback in pairs(listeners) do
     self.emitter:on(event, callback)
   end
@@ -242,9 +230,7 @@ end
 
 ---Check whether or not the instantiation was successful.
 ---@return boolean
-function FileHistoryView:is_valid()
-  return self.valid
-end
+function FileHistoryView:is_valid() return self.valid end
 
 ---@override
 function FileHistoryView.get_default_layout_name()
@@ -256,9 +242,7 @@ end
 function FileHistoryView.get_default_layout()
   local name = FileHistoryView.get_default_layout_name()
 
-  if name == -1 then
-    return FileHistoryView.get_default_diff2()
-  end
+  if name == -1 then return FileHistoryView.get_default_diff2() end
 
   return config.name_to_layout(name --[[@as string ]])
 end

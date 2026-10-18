@@ -1,9 +1,9 @@
-local async = require("diffview.async")
-local lazy = require("diffview.lazy")
-local oop = require("diffview.oop")
+local async = require('diffview.async')
+local lazy = require('diffview.lazy')
+local oop = require('diffview.oop')
 
-local control = lazy.require("diffview.control") ---@module "diffview.control"
-local utils = lazy.require("diffview.utils") ---@module "diffview.utils"
+local control = lazy.require('diffview.control') ---@module "diffview.control"
+local utils = lazy.require('diffview.utils') ---@module "diffview.utils"
 
 local await = async.await
 
@@ -15,10 +15,10 @@ local M = {}
 ---@field src Stream.SrcFunc
 ---@field head integer
 ---@field drained boolean
-local Stream = oop.create_class("Stream")
+local Stream = oop.create_class('Stream')
 M.Stream = Stream
 
-Stream.EOF = oop.Symbol("Stream.EOF");
+Stream.EOF = oop.Symbol('Stream.EOF')
 
 ---@alias Stream.SrcFunc fun(): (item: unknown, continue: boolean?)
 
@@ -32,7 +32,7 @@ end
 ---@private
 ---@param src table|function
 function Stream:create_src(src)
-  if type(src) == "table" then
+  if type(src) == 'table' then
     if utils.islist(src) then
       local itr = ipairs(src)
 
@@ -41,7 +41,7 @@ function Stream:create_src(src)
         return v
       end
     else
-      error("Unimplemented!")
+      error('Unimplemented!')
     end
   else
     return src
@@ -51,9 +51,7 @@ end
 ---@return unknown? item
 ---@return integer? index
 function Stream:next()
-  if self.drained then
-    error("Attempted to consume a drained stream!")
-  end
+  if self.drained then error('Attempted to consume a drained stream!') end
 
   local idx = self.head
   local v, cont = self.src()
@@ -75,7 +73,9 @@ function Stream:skip(n)
     return
   end
 
-  for _ = 1, n do self:next() end
+  for _ = 1, n do
+    self:next()
+  end
 
   return self
 end
@@ -94,7 +94,9 @@ end
 ---@return unknown[]
 function Stream:collect()
   local ret = {}
-  for i, v in self:iter() do ret[i] = v end
+  for i, v in self:iter() do
+    ret[i] = v
+  end
   return ret
 end
 
@@ -107,9 +109,7 @@ function Stream:slice(first, last)
 
   return Stream(function()
     if self.head > last then return nil, false end
-    if first > self.head then
-      self:skip(first - self.head)
-    end
+    if first > self.head then self:skip(first - self.head) end
 
     return (self:next())
   end)
@@ -127,9 +127,7 @@ function Stream:map(f)
       v = self:next()
     end
 
-    if v == Stream.EOF then
-      return nil, false
-    end
+    if v == Stream.EOF then return nil, false end
 
     return v
   end)
@@ -139,9 +137,7 @@ end
 ---@return Stream
 function Stream:filter(f)
   return self:map(function(item)
-    if not f(item) then
-      return nil
-    end
+    if not f(item) then return nil end
 
     return item
   end)
@@ -154,23 +150,23 @@ end
 function Stream:reduce(f, init)
   local acc = init
   if not acc then acc = self:next() end
-  for _, v in self:iter() do acc = f(acc, v) end
+  for _, v in self:iter() do
+    acc = f(acc, v)
+  end
 
   return acc
 end
 
 ---@class AsyncStream : Stream, Waitable
 ---@operator call : AsyncStream
-local AsyncStream = oop.create_class("AsyncStream", Stream)
+local AsyncStream = oop.create_class('AsyncStream', Stream)
 M.AsyncStream = AsyncStream
 
 AsyncStream.next = async.sync_wrap(
   ---@param self AsyncStream
   ---@param callback function
   function(self, callback)
-    if self.drained then
-      error("Attempted to consume a drained stream!")
-    end
+    if self.drained then error('Attempted to consume a drained stream!') end
 
     local idx = self.head
     local v, cont = await(self.src())
@@ -190,9 +186,7 @@ AsyncStream.next = async.sync_wrap(
 AsyncStream.await = async.sync_wrap(
   ---@param self AsyncStream
   ---@param callback function
-  function(self, callback)
-    callback(self:collect())
-  end
+  function(self, callback) callback(self:collect()) end
 )
 
 ---@enum StreamState
@@ -211,7 +205,7 @@ local StreamState = oop.enum({
 ---@field private close_listeners? (fun(...))[]
 ---@field private post_close_listeners (fun())[]
 ---@field private on_close_args? unknown[]
-local AsyncListStream = oop.create_class("AsyncListStream", AsyncStream)
+local AsyncListStream = oop.create_class('AsyncListStream', AsyncStream)
 M.AsyncListStream = AsyncListStream
 
 ---@alias AsyncListStream.EventKind "on_close"|"on_post_close"
@@ -246,7 +240,7 @@ function AsyncListStream:push(...)
   local args = { ... }
   local permit = await(self.sem:acquire()) --[[@as Permit ]]
 
-  for i = 1, select("#", ...) do
+  for i = 1, select('#', ...) do
     if args[i] ~= nil then
       if args[i] == Stream.EOF then
         if self.flow_state ~= StreamState.CLOSING then
@@ -255,18 +249,18 @@ function AsyncListStream:push(...)
           -- Release permit while calling 'on_close' callbacks so that they're
           -- able to invoke some final pushes before fully closing the stream.
           permit:forget()
-          self:invoke_listeners("on_close")
+          self:invoke_listeners('on_close')
           permit = await(self.sem:acquire()) --[[@as Permit ]]
 
-          self.data[#self.data+1] = args[i]
+          self.data[#self.data + 1] = args[i]
           self.flow_state = StreamState.CLOSED
 
-          self:invoke_listeners("on_post_close")
+          self:invoke_listeners('on_post_close')
 
           break
         end
       else
-        self.data[#self.data+1] = args[i]
+        self.data[#self.data + 1] = args[i]
       end
     end
   end
@@ -287,14 +281,10 @@ function AsyncListStream:close(...)
   self:push(Stream.EOF)
 end
 
-function AsyncListStream:is_closed()
-  return self.flow_state == StreamState.CLOSED
-end
+function AsyncListStream:is_closed() return self.flow_state == StreamState.CLOSED end
 
 ---@param callback function
-function AsyncListStream:on_close(callback)
-  table.insert(self.state.on_close.listeners, callback)
-end
+function AsyncListStream:on_close(callback) table.insert(self.state.on_close.listeners, callback) end
 
 ---@param callback function
 function AsyncListStream:on_post_close(callback)

@@ -1,16 +1,16 @@
-local async = require("diffview.async")
-local lazy = require("diffview.lazy")
-local oop = require("diffview.oop")
+local async = require('diffview.async')
+local lazy = require('diffview.lazy')
+local oop = require('diffview.oop')
 
-local Mock = lazy.access("diffview.mock", "Mock") ---@type Mock|LazyModule
-local Semaphore = lazy.access("diffview.control", "Semaphore") ---@type Semaphore|LazyModule
-local loop = lazy.require("diffview.debounce") ---@module "diffview.debounce"
-local utils = lazy.require("diffview.utils") ---@module "diffview.utils"
+local Mock = lazy.access('diffview.mock', 'Mock') ---@type Mock|LazyModule
+local Semaphore = lazy.access('diffview.control', 'Semaphore') ---@type Semaphore|LazyModule
+local loop = lazy.require('diffview.debounce') ---@module "diffview.debounce"
+local utils = lazy.require('diffview.utils') ---@module "diffview.utils"
 
 local api = vim.api
 local await, pawait = async.await, async.pawait
 local fmt = string.format
-local pl = lazy.access(utils, "path") ---@type PathLib
+local pl = lazy.access(utils, 'path') ---@type PathLib
 local uv = vim.loop
 
 local M = {}
@@ -40,9 +40,9 @@ local function time_of_day(time)
     assert(secs, micros)
   end
 
-  local tzs = os.date("%z", secs) --[[@as string ]]
-  local sign = tzs:match("[+-]") == "-" and -1 or 1
-  local tz_h, tz_m = tzs:match("[+-]?(%d%d)(%d%d)")
+  local tzs = os.date('%z', secs) --[[@as string ]]
+  local sign = tzs:match('[+-]') == '-' and -1 or 1
+  local tz_h, tz_m = tzs:match('[+-]?(%d%d)(%d%d)')
   tz_h = tz_h * sign
   tz_m = tz_m * sign
 
@@ -95,7 +95,7 @@ end
 ---@field lazy_warn Logger.LazyLogFunc
 ---@field lazy_error Logger.LazyLogFunc
 ---@field lazy_fatal Logger.LazyLogFunc
-local Logger = oop.create_class("Logger")
+local Logger = oop.create_class('Logger')
 
 ---@enum Logger.OutfileStatus
 Logger.OutfileStatus = oop.enum({
@@ -118,8 +118,8 @@ Logger.mock = Mock()
 
 function Logger:init(opt)
   opt = opt or {}
-  self.plugin = opt.plugin or "diffview"
-  self.outfile = opt.outfile or fmt("%s/%s.log", vim.fn.stdpath("cache"), self.plugin)
+  self.plugin = opt.plugin or 'diffview'
+  self.outfile = opt.outfile or fmt('%s/%s.log', vim.fn.stdpath('cache'), self.plugin)
   self.outfile_status = Logger.OutfileStatus.UNKNOWN
   self.level = DiffviewGlobal.debug_level > 0 and Logger.LogLevels.debug or Logger.LogLevels.info
   self.msg_buffer = {}
@@ -127,7 +127,7 @@ function Logger:init(opt)
   self.batch_interval = opt.batch_interval or 3000
 
   -- Flush msg buffer before exiting
-  api.nvim_create_autocmd("VimLeavePre", {
+  api.nvim_create_autocmd('VimLeavePre', {
     callback = function()
       if self.batch_handle then
         self.batch_handle.close()
@@ -162,28 +162,25 @@ end
 function Logger.dstring(object)
   local tp = type(object)
 
-  if tp == "thread"
-    or tp == "function"
-    or tp == "userdata"
-  then
-    return fmt("<%s %p>", tp, object)
-  elseif tp == "number" then
+  if tp == 'thread' or tp == 'function' or tp == 'userdata' then
+    return fmt('<%s %p>', tp, object)
+  elseif tp == 'number' then
     return tostring(to_precision(object, 3))
-  elseif tp == "table" then
+  elseif tp == 'table' then
     local mt = getmetatable(object)
 
     if mt and mt.__tostring then
       return tostring(object)
     elseif utils.islist(object) then
-      if #object == 0 then return "[]" end
-      local s = ""
+      if #object == 0 then return '[]' end
+      local s = ''
 
       for i = 1, table.maxn(object) do
-        if i > 1 then s = s .. ", " end
+        if i > 1 then s = s .. ', ' end
         s = s .. Logger.dstring(object[i])
       end
 
-      return "[ " .. s .. " ]"
+      return '[ ' .. s .. ' ]'
     end
 
     return vim.inspect(object)
@@ -198,7 +195,7 @@ local function dvalues(...)
   local args = { ... }
   local ret = {}
 
-  for i = 1, select("#", ...) do
+  for i = 1, select('#', ...) do
     ret[i] = dstring(args[i])
   end
 
@@ -212,13 +209,13 @@ end
 ---@param ... any
 function Logger:_log(level_name, lazy_eval, x, ...)
   local ctx = self.ctx or {}
-  local info = ctx.debuginfo or debug.getinfo(3, "Sl")
-  local lineinfo = info.short_src .. ":" .. info.currentline
+  local info = ctx.debuginfo or debug.getinfo(3, 'Sl')
+  local lineinfo = info.short_src .. ':' .. info.currentline
   local time = ctx.time or Logger.time_now()
   local tod = time_of_day(time)
   local date = fmt(
-    "%s %02d:%02d:%02d.%03d %s",
-    os.date("%F", time.timestamp),
+    '%s %02d:%02d:%02d.%03d %s',
+    os.date('%F', time.timestamp),
     tod.hours,
     tod.mins,
     tod.secs,
@@ -227,25 +224,27 @@ function Logger:_log(level_name, lazy_eval, x, ...)
   )
 
   if lazy_eval then
-    self:queue_msg(function()
-      return fmt(
-        "[%-6s%s] %s: %s%s\n",
-        level_name:upper(),
-        date,
-        lineinfo,
-        ctx.label and fmt("[%s] ", ctx.label) or "",
-        table.concat(dvalues(x()), " ")
-      )
-    end)
+    self:queue_msg(
+      function()
+        return fmt(
+          '[%-6s%s] %s: %s%s\n',
+          level_name:upper(),
+          date,
+          lineinfo,
+          ctx.label and fmt('[%s] ', ctx.label) or '',
+          table.concat(dvalues(x()), ' ')
+        )
+      end
+    )
   else
     self:queue_msg(
       fmt(
-        "[%-6s%s] %s: %s%s\n",
+        '[%-6s%s] %s: %s%s\n',
         level_name:upper(),
         date,
         lineinfo,
-        ctx.label and fmt("[%s] ", ctx.label) or "",
-        table.concat(dvalues(x, ...), " ")
+        ctx.label and fmt('[%s] ', ctx.label) or '',
+        table.concat(dvalues(x, ...), ' ')
       )
     )
   end
@@ -263,9 +262,7 @@ Logger.queue_msg = async.void(function(self, msg)
   elseif self.outfile_status == Logger.OutfileStatus.UNKNOWN then
     local ok, err = pawait(pl.touch, pl, self.outfile, { parents = true })
 
-    if not ok then
-      error("Failed to prepare log file! Details:\n" .. err)
-    end
+    if not ok then error('Failed to prepare log file! Details:\n' .. err) end
 
     self.outfile_status = Logger.OutfileStatus.READY
   end
@@ -293,12 +290,10 @@ Logger.flush = async.void(function(self)
 
     -- Eval lazy messages
     for i = 1, #self.msg_buffer do
-      if type(self.msg_buffer[i]) == "function" then
-        self.msg_buffer[i] = self.msg_buffer[i]()
-      end
+      if type(self.msg_buffer[i]) == 'function' then self.msg_buffer[i] = self.msg_buffer[i]() end
     end
 
-    local fd, err = uv.fs_open(self.outfile, "a", tonumber("0644", 8))
+    local fd, err = uv.fs_open(self.outfile, 'a', tonumber('0644', 8))
     assert(fd, err)
     uv.fs_write(fd, table.concat(self.msg_buffer))
     uv.fs_close(fd)
@@ -311,25 +306,21 @@ end)
 ---@param min_level integer
 ---@return Logger
 function Logger:lvl(min_level)
-  if DiffviewGlobal.debug_level >= min_level then
-    return self
-  end
+  if DiffviewGlobal.debug_level >= min_level then return self end
 
   return Logger.mock --[[@as Logger ]]
 end
 
 ---@param ctx Logger.Context
-function Logger:set_context(ctx)
-  self.ctx = ctx
-end
+function Logger:set_context(ctx) self.ctx = ctx end
 
-function Logger:clear_context()
-  self.ctx = nil
-end
+function Logger:clear_context() self.ctx = nil end
 
 do
   -- Create methods
-  for level, name in ipairs(Logger.LogLevels --[[@as string[] ]]) do
+  for level, name in
+    ipairs(Logger.LogLevels --[[@as string[] ]])
+  do
     ---@param self Logger
     Logger[name] = function(self, ...)
       if self.level < level then return end
@@ -337,13 +328,13 @@ do
     end
 
     ---@param self Logger
-    Logger["fmt_" .. name] = function(self, formatstring, ...)
+    Logger['fmt_' .. name] = function(self, formatstring, ...)
       if self.level < level then return end
       self:_log(name, false, fmt(formatstring, ...))
     end
 
     ---@param self Logger
-    Logger["lazy_" .. name] = function(self, func)
+    Logger['lazy_' .. name] = function(self, func)
       if self.level < level then return end
       self:_log(name, true, func)
     end
@@ -367,12 +358,10 @@ function Logger:log_job(job, opt)
   opt = opt or {}
 
   if opt.silent then return end
-  if opt.debug_level and DiffviewGlobal.debug_level < opt.debug_level then
-    return
-  end
+  if opt.debug_level and DiffviewGlobal.debug_level < opt.debug_level then return end
 
   self:set_context({
-    debuginfo = opt.debuginfo or debug.getinfo(2, "Sl"),
+    debuginfo = opt.debuginfo or debug.getinfo(2, 'Sl'),
     time = Logger.time_now(),
     label = opt.label,
   })
@@ -384,23 +373,21 @@ function Logger:log_job(job, opt)
 
   local log_func = self.debug
 
-  if type(opt.func) == "string" then
+  if type(opt.func) == 'string' then
     log_func = self[opt.func]
-  elseif type(opt.func) == "function" then
+  elseif type(opt.func) == 'function' then
     log_func = opt.func --[[@as function ]]
   end
 
-  log_func(self, fmt("[job-info] Exit code: %s", job.code))
-  log_func(self, fmt("     [cmd] %s %s", job.command, table.concat(args, " ")))
+  log_func(self, fmt('[job-info] Exit code: %s', job.code))
+  log_func(self, fmt('     [cmd] %s %s', job.command, table.concat(args, ' ')))
 
-  if job.cwd then
-    log_func(self, fmt("     [cwd] %s", job.cwd))
-  end
+  if job.cwd then log_func(self, fmt('     [cwd] %s', job.cwd)) end
   if not opt.no_stdout and job.stdout[1] then
-    log_func(self, "  [stdout] " .. table.concat(job.stdout, "\n"))
+    log_func(self, '  [stdout] ' .. table.concat(job.stdout, '\n'))
   end
   if not opt.no_stderr and job.stderr[1] then
-    log_func(self, "  [stderr] " .. table.concat(job.stderr, "\n"))
+    log_func(self, '  [stderr] ' .. table.concat(job.stderr, '\n'))
   end
 
   self:clear_context()

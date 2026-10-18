@@ -1,16 +1,16 @@
-local ffi = require("diffview.ffi")
-local oop = require("diffview.oop")
+local ffi = require('diffview.ffi')
+local oop = require('diffview.oop')
 
 local fmt = string.format
 local uv = vim.loop
 
-local DEFAULT_ERROR = "Unkown error."
+local DEFAULT_ERROR = 'Unkown error.'
 
 local M = {}
 
 ---@package
 ---@type { [Future]: boolean }
-M._watching = setmetatable({}, { __mode = "k" })
+M._watching = setmetatable({}, { __mode = 'k' })
 
 ---@package
 ---@type { [thread]: Future }
@@ -20,24 +20,20 @@ M._handles = {}
 ---@alias AsyncKind "callback"|"void"
 
 local function dstring(object)
-  if not DiffviewGlobal.logger then return "" end
+  if not DiffviewGlobal.logger then return '' end
   dstring = DiffviewGlobal.logger.dstring
   return dstring(object)
 end
 
 ---@param ... any
 ---@return table
-local function tbl_pack(...)
-  return { n = select("#", ...), ... }
-end
+local function tbl_pack(...) return { n = select('#', ...), ... } end
 
 ---@param t table
 ---@param i? integer
 ---@param j? integer
 ---@return any ...
-local function tbl_unpack(t, i, j)
-  return unpack(t, i or 1, j or t.n or table.maxn(t))
-end
+local function tbl_unpack(t, i, j) return unpack(t, i or 1, j or t.n or table.maxn(t)) end
 
 ---Returns the current thread or `nil` if it's the main thread.
 ---
@@ -56,7 +52,7 @@ end
 local function current_thread()
   local current, ismain = coroutine.running()
 
-  if type(ismain) == "boolean" then
+  if type(ismain) == 'boolean' then
     return not ismain and current or nil
   else
     return current
@@ -64,7 +60,7 @@ local function current_thread()
 end
 
 ---@class Waitable : diffview.Object
-local Waitable = oop.create_class("Waitable")
+local Waitable = oop.create_class('Waitable')
 M.Waitable = Waitable
 
 ---@abstract
@@ -93,7 +89,7 @@ end
 ---@field package awaiting_cb boolean
 ---@field package done boolean
 ---@field package has_raised boolean # `true` if this future has raised an error.
-local Future = oop.create_class("Future", Waitable)
+local Future = oop.create_class('Future', Waitable)
 
 function Future:init(opt)
   opt = opt or {}
@@ -117,28 +113,20 @@ end
 
 ---@package
 ---@return string
-function Future:__tostring()
-  return dstring(self.thread)
-end
+function Future:__tostring() return dstring(self.thread) end
 
 ---@package
-function Future:destroy()
-  M._handles[self.thread] = nil
-end
+function Future:destroy() M._handles[self.thread] = nil end
 
 ---@package
 ---@param value boolean
 function Future:set_done(value)
   self.done = value
-  if self:is_watching() then
-    self:dprint("done was set:", self.done)
-  end
+  if self:is_watching() then self:dprint('done was set:', self.done) end
 end
 
 ---@return boolean
-function Future:is_done()
-  return not not self.done
-end
+function Future:is_done() return not not self.done end
 
 ---@return any ... # If the future has completed, this returns any returned values.
 function Future:get_returned()
@@ -151,33 +139,27 @@ end
 function Future:dprint(...)
   if not DiffviewGlobal.logger then return end
   if DiffviewGlobal.debug_level >= 10 or M._watching[self] then
-    local t = { self, "::", ... }
-    for i = 1, table.maxn(t) do t[i] = dstring(t[i]) end
-    DiffviewGlobal.logger:debug(table.concat(t, " "))
+    local t = { self, '::', ... }
+    for i = 1, table.maxn(t) do
+      t[i] = dstring(t[i])
+    end
+    DiffviewGlobal.logger:debug(table.concat(t, ' '))
   end
 end
 
 ---@package
 ---@param ... any
-function Future:dprintf(...)
-  self:dprint(fmt(...))
-end
+function Future:dprintf(...) self:dprint(fmt(...)) end
 
 ---Start logging debug info about this future.
-function Future:watch()
-  M._watching[self] = true
-end
+function Future:watch() M._watching[self] = true end
 
 ---Stop logging debug info about this future.
-function Future:unwatch()
-  M._watching[self] = nil
-end
+function Future:unwatch() M._watching[self] = nil end
 
 ---@package
 ---@return boolean
-function Future:is_watching()
-  return not not M._watching[self]
-end
+function Future:is_watching() return not not M._watching[self] end
 
 ---@package
 ---@param force? boolean
@@ -189,7 +171,7 @@ end
 
 ---@package
 function Future:step(...)
-  self:dprint("step")
+  self:dprint('step')
   local ret = { coroutine.resume(self.thread, ...) }
   local ok = ret[1]
 
@@ -197,16 +179,13 @@ function Future:step(...)
     local err = ret[2] or DEFAULT_ERROR
     local func_info
 
-    if self.func then
-      func_info = debug.getinfo(self.func, "uS")
-    end
+    if self.func then func_info = debug.getinfo(self.func, 'uS') end
 
     local msg = fmt(
-      "The coroutine failed with this message: \n"
-        .. "\tcontext: cur_thread=%s co_thread=%s %s\n%s",
-      dstring(current_thread() or "main"),
+      'The coroutine failed with this message: \n' .. '\tcontext: cur_thread=%s co_thread=%s %s\n%s',
+      dstring(current_thread() or 'main'),
       dstring(self.thread),
-      func_info and fmt("co_func=%s:%d", func_info.short_src, func_info.linedefined) or "",
+      func_info and fmt('co_func=%s:%d', func_info.short_src, func_info.linedefined) or '',
       debug.traceback(self.thread, err)
     )
     self:set_done(true)
@@ -216,8 +195,8 @@ function Future:step(...)
     return
   end
 
-  if coroutine.status(self.thread) == "dead" then
-    self:dprint("handle dead")
+  if coroutine.status(self.thread) == 'dead' then
+    self:dprint('handle dead')
     self:set_done(true)
     self:notify_all(true, unpack(ret, 2, table.maxn(ret)))
     self:destroy()
@@ -231,9 +210,7 @@ end
 function Future:notify_all(ok, ...)
   local ret_values = tbl_pack(ok, ...)
 
-  if not ok then
-    self.err = ret_values[2] or DEFAULT_ERROR
-  end
+  if not ok then self.err = ret_values[2] or DEFAULT_ERROR end
 
   local seen = {}
 
@@ -242,7 +219,7 @@ function Future:notify_all(ok, ...)
 
     -- We don't want to trigger multiple steps for a single thread
     if handle and not seen[handle.thread] then
-      self:dprint("notifying:", handle)
+      self:dprint('notifying:', handle)
       seen[handle.thread] = true
       handle:step(ret_values)
     end
@@ -257,9 +234,7 @@ function Future:await()
     return
   end
 
-  if self:is_done() then
-    return self:get_returned()
-  end
+  if self:is_done() then return self:get_returned() end
 
   local current = current_thread()
 
@@ -273,10 +248,10 @@ function Future:await()
   if not parent_handle then
     -- We're on a thread not managed by us: create a Future wrap around the
     -- thread
-    self:dprint("creating a wrapper around unmanaged thread")
+    self:dprint('creating a wrapper around unmanaged thread')
     self.parent = Future({
       thread = current,
-      kind = "void",
+      kind = 'void',
     })
   else
     self.parent = parent_handle
@@ -288,7 +263,7 @@ function Future:await()
     table.insert(self.listeners, self.parent)
   end
 
-  self:dprintf("awaiting: yielding=%s listeners=%s", dstring(current), dstring(self.listeners))
+  self:dprintf('awaiting: yielding=%s listeners=%s', dstring(current), dstring(self.listeners))
   coroutine.yield()
 
   local ok
@@ -298,9 +273,7 @@ function Future:await()
   else
     ok = self.return_values[1]
 
-    if not ok then
-      self.err = self.return_values[2] or DEFAULT_ERROR
-    end
+    if not ok then self.err = self.return_values[2] or DEFAULT_ERROR end
   end
 
   if not ok then
@@ -317,9 +290,11 @@ function Future:toplevel_await()
   local ok, status
 
   while true do
-    ok, status = vim.wait(1000 * 60, function()
-      return coroutine.status(self.thread) == "dead"
-    end, 1)
+    ok, status = vim.wait(
+      1000 * 60,
+      function() return coroutine.status(self.thread) == 'dead' end,
+      1
+    )
 
     -- Respect interrupts
     if status ~= -1 then break end
@@ -327,9 +302,9 @@ function Future:toplevel_await()
 
   if not ok then
     if status == -1 then
-      error("Async task timed out!")
+      error('Async task timed out!')
     elseif status == -2 then
-      error("Async task got interrupted!")
+      error('Async task got interrupted!')
     end
   end
 
@@ -358,12 +333,10 @@ function M._run(func, opt)
   local function wrapped_func(...)
     if use_err_handler then
       -- We are not on the main thread: use custom err handler
-      local ok = xpcall(func, function(err)
-        handle.err = debug.traceback(err, 2)
-      end, ...)
+      local ok = xpcall(func, function(err) handle.err = debug.traceback(err, 2) end, ...)
 
       if not ok then
-        handle:dprint("an error was raised: terminating")
+        handle:dprint('an error was raised: terminating')
         handle:set_done(true)
         handle:destroy()
         error(handle.err, 0)
@@ -375,17 +348,17 @@ function M._run(func, opt)
 
     -- Check if we need to yield until cb. We might not need to if the cb was
     -- called in a synchronous way.
-    if opt.kind == "callback" and not handle:is_done() then
+    if opt.kind == 'callback' and not handle:is_done() then
       handle.awaiting_cb = true
-      handle:dprintf("yielding for cb: current=%s", dstring(current_thread()))
+      handle:dprintf('yielding for cb: current=%s', dstring(current_thread()))
       coroutine.yield()
-      handle:dprintf("resuming after cb: current=%s", dstring(current_thread()))
+      handle:dprintf('resuming after cb: current=%s', dstring(current_thread()))
     end
 
     handle:set_done(true)
   end
 
-  if opt.kind == "callback" then
+  if opt.kind == 'callback' then
     local cur_cb = opt.args[opt.nparams]
 
     local function wrapped_cb(...)
@@ -406,7 +379,7 @@ function M._run(func, opt)
   end
 
   handle = Future({ func = wrapped_func, kind = opt.kind })
-  handle:dprint("created thread")
+  handle:dprint('created thread')
   handle.func = func
   handle.started = true
   handle:step(tbl_unpack(opt.args))
@@ -420,7 +393,7 @@ end
 function M.void(func)
   return function(...)
     return M._run(func, {
-      kind = "void",
+      kind = 'void',
       args = { ... },
     })
   end
@@ -435,15 +408,15 @@ end
 ---@return AsyncFunc
 function M.wrap(func, nparams)
   if not nparams then
-    local info = debug.getinfo(func, "uS")
-    assert(info.what == "Lua", "Parameter count can only be derived for Lua functions!")
+    local info = debug.getinfo(func, 'uS')
+    assert(info.what == 'Lua', 'Parameter count can only be derived for Lua functions!')
     nparams = info.nparams
   end
 
   return function(...)
     return M._run(func, {
       nparams = nparams,
-      kind = "callback",
+      kind = 'callback',
       args = { ... },
     })
   end
@@ -451,9 +424,7 @@ end
 
 ---@param waitable Waitable
 ---@return any ... # Any values returned by the waitable
-function M.await(waitable)
-  return waitable:await()
-end
+function M.await(waitable) return waitable:await() end
 
 ---Await the async function `x` with the given arguments in protected mode. `x`
 ---may also be a waitable, in which case the subsequent parameters are ignored.
@@ -465,7 +436,7 @@ end
 function M.pawait(x, ...)
   local args = tbl_pack(...)
   return pcall(function()
-    if type(x) == "function" then
+    if type(x) == 'function' then
       return M.await(x(tbl_unpack(args)))
     else
       return x:await()
@@ -485,9 +456,7 @@ local await = M.await
 function M.sync_void(func)
   local afunc = M.void(func)
 
-  return function(...)
-    return await(afunc(...))
-  end
+  return function(...) return await(afunc(...)) end
 end
 
 ---Create a synchronous version of an async `wrap` task. Calling the resulting
@@ -499,9 +468,7 @@ end
 function M.sync_wrap(func, nparams)
   local afunc = M.wrap(func, nparams)
 
-  return function(...)
-    return await(afunc(...))
-  end
+  return function(...) return await(afunc(...)) end
 end
 
 ---Run the given async tasks concurrently, and then wait for them all to
@@ -514,11 +481,11 @@ M.join = M.void(function(tasks)
   -- Ensure all async tasks are started
   for _, cur in ipairs(tasks) do
     if cur then
-      if type(cur) == "function" then
-        futures[#futures+1] = cur()
+      if type(cur) == 'function' then
+        futures[#futures + 1] = cur()
       else
         ---@cast cur Waitable
-        futures[#futures+1] = cur
+        futures[#futures + 1] = cur
       end
     end
   end
@@ -533,7 +500,7 @@ end)
 ---@param tasks (AsyncFunc|Waitable)[]
 M.chain = M.void(function(tasks)
   for _, task in ipairs(tasks) do
-    if type(task) == "function" then
+    if type(task) == 'function' then
       ---@cast task AsyncFunc
       await(task())
     else
@@ -548,14 +515,10 @@ end)
 M.timeout = M.wrap(function(timeout, callback)
   local timer = assert(uv.new_timer())
 
-  timer:start(
-    timeout,
-    0,
-    function()
-      if not timer:is_closing() then timer:close() end
-      callback()
-    end
-  )
+  timer:start(timeout, 0, function()
+    if not timer:is_closing() then timer:close() end
+    callback()
+  end)
 end)
 
 ---Yield until the Neovim API is available.

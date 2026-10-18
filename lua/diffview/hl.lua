@@ -1,7 +1,7 @@
-local lazy = require("diffview.lazy")
+local lazy = require('diffview.lazy')
 
-local config = lazy.require("diffview.config") ---@module "diffview.config"
-local utils = lazy.require("diffview.utils") ---@module "diffview.utils"
+local config = lazy.require('diffview.config') ---@module "diffview.config"
+local utils = lazy.require('diffview.utils') ---@module "diffview.utils"
 
 local api = vim.api
 local web_devicons
@@ -52,8 +52,8 @@ local M = {}
 
 ---@alias hl.HlAttrValue integer|boolean
 
-local HAS_NVIM_0_8 = vim.fn.has("nvim-0.8") == 1
-local HAS_NVIM_0_9 = vim.fn.has("nvim-0.9") == 1
+local HAS_NVIM_0_8 = vim.fn.has('nvim-0.8') == 1
+local HAS_NVIM_0_9 = vim.fn.has('nvim-0.9') == 1
 
 ---@enum HlAttribute
 M.HlAttribute = {
@@ -77,16 +77,16 @@ M.HlAttribute = {
 }
 
 local style_attrs = {
-  "bold",
-  "italic",
-  "underline",
-  "underlineline",
-  "undercurl",
-  "underdash",
-  "underdot",
-  "strikethrough",
-  "standout",
-  "reverse",
+  'bold',
+  'italic',
+  'underline',
+  'underlineline',
+  'undercurl',
+  'underdash',
+  'underdot',
+  'strikethrough',
+  'standout',
+  'reverse',
 }
 
 -- NOTE: Some atrtibutes have been renamed in v0.8.0
@@ -101,16 +101,16 @@ if HAS_NVIM_0_8 then
   M.HlAttribute.underlineline = nil
 
   style_attrs = {
-    "bold",
-    "italic",
-    "underline",
-    "underdouble",
-    "undercurl",
-    "underdashed",
-    "underdotted",
-    "strikethrough",
-    "standout",
-    "reverse",
+    'bold',
+    'italic',
+    'underline',
+    'underdouble',
+    'undercurl',
+    'underdashed',
+    'underdotted',
+    'strikethrough',
+    'standout',
+    'reverse',
   }
 end
 
@@ -145,14 +145,23 @@ function M.get_hl(name, no_trans)
   if hl then
     if not HAS_NVIM_0_9 then
       -- Handle renames
-      if hl.foreground then hl.fg = hl.foreground; hl.foreground = nil end
-      if hl.background then hl.bg = hl.background; hl.background = nil end
-      if hl.special then hl.sp = hl.special; hl.special = nil end
+      if hl.foreground then
+        hl.fg = hl.foreground
+        hl.foreground = nil
+      end
+      if hl.background then
+        hl.bg = hl.background
+        hl.background = nil
+      end
+      if hl.special then
+        hl.sp = hl.special
+        hl.special = nil
+      end
     end
 
-    if hl.fg then hl.x_fg = string.format("#%06x", hl.fg) end
-    if hl.bg then hl.x_bg = string.format("#%06x", hl.bg) end
-    if hl.sp then hl.x_sp = string.format("#%06x", hl.sp) end
+    if hl.fg then hl.x_fg = string.format('#%06x', hl.fg) end
+    if hl.bg then hl.x_bg = string.format('#%06x', hl.bg) end
+    if hl.sp then hl.x_sp = string.format('#%06x', hl.sp) end
 
     return hl
   end
@@ -165,7 +174,7 @@ end
 function M.get_hl_attr(name, attr, no_trans)
   local hl = M.get_hl(name, no_trans)
 
-  if type(attr) == "string" then attr = hlattr[attr] end
+  if type(attr) == 'string' then attr = hlattr[attr] end
 
   if not (hl and attr) then return end
 
@@ -179,7 +188,7 @@ end
 function M.get_fg(groups, no_trans)
   no_trans = not not no_trans
 
-  if type(groups) ~= "table" then groups = { groups } end
+  if type(groups) ~= 'table' then groups = { groups } end
 
   for _, group in ipairs(groups) do
     local v = M.get_hl_attr(group, hlattr.x_fg, no_trans) --[[@as string? ]]
@@ -195,7 +204,7 @@ end
 function M.get_bg(groups, no_trans)
   no_trans = not not no_trans
 
-  if type(groups) ~= "table" then groups = { groups } end
+  if type(groups) ~= 'table' then groups = { groups } end
 
   for _, group in ipairs(groups) do
     local v = M.get_hl_attr(group, hlattr.x_bg, no_trans) --[[@as string? ]]
@@ -210,7 +219,7 @@ end
 ---@return string?
 function M.get_style(groups, no_trans)
   no_trans = not not no_trans
-  if type(groups) ~= "table" then groups = { groups } end
+  if type(groups) ~= 'table' then groups = { groups } end
 
   for _, group in ipairs(groups) do
     local hl = M.get_hl(group, no_trans)
@@ -219,12 +228,9 @@ function M.get_style(groups, no_trans)
       local res = {}
 
       for _, attr in ipairs(style_attrs) do
-        if hl[attr] then table.insert(res, attr)
-        end
+        if hl[attr] then table.insert(res, attr) end
 
-        if #res > 0 then
-          return table.concat(res, ",")
-        end
+        if #res > 0 then return table.concat(res, ',') end
       end
     end
   end
@@ -235,14 +241,14 @@ end
 function M.hi_spec_to_def_map(spec)
   ---@type hl.HlData
   local res = {}
-  local fields = { "fg", "bg", "sp", "ctermfg", "ctermbg", "default", "link" }
+  local fields = { 'fg', 'bg', 'sp', 'ctermfg', 'ctermbg', 'default', 'link' }
 
   for _, field in ipairs(fields) do
     res[field] = spec[field]
   end
 
   if spec.style then
-    local spec_attrs = utils.add_reverse_lookup(vim.split(spec.style, ","))
+    local spec_attrs = utils.add_reverse_lookup(vim.split(spec.style, ','))
 
     for _, attr in ipairs(style_attrs) do
       res[attr] = spec_attrs[attr] ~= nil
@@ -255,7 +261,7 @@ end
 ---@param groups string|string[] Syntax group name or a list of group names.
 ---@param opt hl.HiSpec
 function M.hi(groups, opt)
-  if type(groups) ~= "table" then groups = { groups } end
+  if type(groups) ~= 'table' then groups = { groups } end
 
   for _, group in ipairs(groups) do
     local def_spec
@@ -263,15 +269,11 @@ function M.hi(groups, opt)
     if opt.explicit then
       def_spec = M.hi_spec_to_def_map(opt)
     else
-      def_spec = M.hi_spec_to_def_map(
-        vim.tbl_extend("force", M.get_hl(group, true) or {}, opt)
-      )
+      def_spec = M.hi_spec_to_def_map(vim.tbl_extend('force', M.get_hl(group, true) or {}, opt))
     end
 
     for k, v in pairs(def_spec) do
-      if v == "NONE" then
-        def_spec[k] = nil
-      end
+      if v == 'NONE' then def_spec[k] = nil end
     end
 
     if not HAS_NVIM_0_9 and def_spec.link then
@@ -283,13 +285,9 @@ function M.hi(groups, opt)
       local link = def_spec.link
       def_spec.link = nil
 
-      if not def_spec.default then
-        api.nvim_set_hl(0, group, def_spec)
-      end
+      if not def_spec.default then api.nvim_set_hl(0, group, def_spec) end
 
-      if link ~= -1 then
-        api.nvim_set_hl(0, group, { link = link, default = def_spec.default })
-      end
+      if link ~= -1 then api.nvim_set_hl(0, group, { link = link, default = def_spec.default }) end
     else
       api.nvim_set_hl(0, group, def_spec)
     end
@@ -300,16 +298,16 @@ end
 ---@param to? string Syntax group name. (default: `"NONE"`)
 ---@param opt? hl.HiLinkSpec
 function M.hi_link(from, to, opt)
-  if to and tostring(to):upper() == "NONE" then
+  if to and tostring(to):upper() == 'NONE' then
     ---@diagnostic disable-next-line: cast-local-type
     to = -1
   end
 
-  opt = vim.tbl_extend("keep", opt or {}, {
+  opt = vim.tbl_extend('keep', opt or {}, {
     force = true,
   }) --[[@as hl.HiLinkSpec ]]
 
-  if type(from) ~= "table" then from = { from } end
+  if type(from) ~= 'table' then from = { from } end
 
   for _, f in ipairs(from) do
     if opt.clear then
@@ -319,7 +317,6 @@ function M.hi_link(from, to, opt)
       end
 
       api.nvim_set_hl(0, f, { default = opt.default, link = to })
-
     else
       -- When `clear` is not set; use our `hi()` function such that other
       -- attributes are not affected.
@@ -333,13 +330,11 @@ end
 ---@param groups? string|string[]
 function M.hi_clear(groups)
   if not groups then
-    vim.cmd("hi clear")
+    vim.cmd('hi clear')
     return
   end
 
-  if type(groups) ~= "table" then
-    groups = { groups }
-  end
+  if type(groups) ~= 'table' then groups = { groups } end
 
   for _, g in ipairs(groups) do
     api.nvim_set_hl(0, g, {})
@@ -347,25 +342,25 @@ function M.hi_clear(groups)
 end
 
 function M.get_file_icon(name, ext, render_data, line_idx, offset)
-  if not config.get_config().use_icons then return "" end
+  if not config.get_config().use_icons then return '' end
 
   if not web_devicons then
     local ok
-    ok, web_devicons = pcall(require, "nvim-web-devicons")
+    ok, web_devicons = pcall(require, 'nvim-web-devicons')
 
     if not ok then
       config.get_config().use_icons = false
       utils.warn(
-        "nvim-web-devicons is required to use file icons! "
-          .. "Set `use_icons = false` in your config to stop seeing this message."
+        'nvim-web-devicons is required to use file icons! '
+          .. 'Set `use_icons = false` in your config to stop seeing this message.'
       )
 
-      return ""
+      return ''
     end
   end
 
   local icon, hl
-  local icon_key = (name or "") .. "|&|" .. (ext or "")
+  local icon_key = (name or '') .. '|&|' .. (ext or '')
 
   if icon_cache[icon_key] then
     icon, hl = unpack(icon_cache[icon_key])
@@ -379,41 +374,39 @@ function M.get_file_icon(name, ext, render_data, line_idx, offset)
       render_data:add_hl(hl, line_idx, offset, offset + string.len(icon) + 1)
     end
 
-    return icon .. " ", hl
+    return icon .. ' ', hl
   end
 
-  return ""
+  return ''
 end
 
 local git_status_hl_map = {
-  ["A"] = "DiffviewStatusAdded",
-  ["?"] = "DiffviewStatusUntracked",
-  ["M"] = "DiffviewStatusModified",
-  ["R"] = "DiffviewStatusRenamed",
-  ["C"] = "DiffviewStatusCopied",
-  ["T"] = "DiffviewStatusTypeChanged",
-  ["U"] = "DiffviewStatusUnmerged",
-  ["X"] = "DiffviewStatusUnknown",
-  ["D"] = "DiffviewStatusDeleted",
-  ["B"] = "DiffviewStatusBroken",
-  ["!"] = "DiffviewStatusIgnored",
+  ['A'] = 'DiffviewStatusAdded',
+  ['?'] = 'DiffviewStatusUntracked',
+  ['M'] = 'DiffviewStatusModified',
+  ['R'] = 'DiffviewStatusRenamed',
+  ['C'] = 'DiffviewStatusCopied',
+  ['T'] = 'DiffviewStatusTypeChanged',
+  ['U'] = 'DiffviewStatusUnmerged',
+  ['X'] = 'DiffviewStatusUnknown',
+  ['D'] = 'DiffviewStatusDeleted',
+  ['B'] = 'DiffviewStatusBroken',
+  ['!'] = 'DiffviewStatusIgnored',
 }
 
-function M.get_git_hl(status)
-  return git_status_hl_map[status]
-end
+function M.get_git_hl(status) return git_status_hl_map[status] end
 
 function M.get_colors()
   return {
-    white = M.get_fg("Normal") or "White",
-    red = M.get_fg("Keyword") or "Red",
-    green = M.get_fg("Character") or "Green",
-    yellow = M.get_fg("PreProc") or "Yellow",
-    blue = M.get_fg("Include") or "Blue",
-    purple = M.get_fg("Define") or "Purple",
-    cyan = M.get_fg("Conditional") or "Cyan",
-    dark_red = M.get_fg("Keyword") or "DarkRed",
-    orange = M.get_fg("Number") or "Orange",
+    white = M.get_fg('Normal') or 'White',
+    red = M.get_fg('Keyword') or 'Red',
+    green = M.get_fg('Character') or 'Green',
+    yellow = M.get_fg('PreProc') or 'Yellow',
+    blue = M.get_fg('Include') or 'Blue',
+    purple = M.get_fg('Define') or 'Purple',
+    cyan = M.get_fg('Conditional') or 'Cyan',
+    dark_red = M.get_fg('Keyword') or 'DarkRed',
+    orange = M.get_fg('Number') or 'Orange',
   }
 end
 
@@ -421,74 +414,74 @@ function M.get_hl_groups()
   local colors = M.get_colors()
 
   return {
-    FilePanelTitle = { fg = M.get_fg("Label") or colors.blue, style = "bold" },
-    FilePanelCounter = { fg = M.get_fg("Identifier") or colors.purple, style = "bold" },
-    FilePanelFileName = { fg = M.get_fg("Normal") or colors.white },
-    Dim1 = { fg = M.get_fg("Comment") or colors.white },
-    Primary = { fg = M.get_fg("Function") or "Purple" },
-    Secondary = { fg = M.get_fg("String") or "Orange" },
+    FilePanelTitle = { fg = M.get_fg('Label') or colors.blue, style = 'bold' },
+    FilePanelCounter = { fg = M.get_fg('Identifier') or colors.purple, style = 'bold' },
+    FilePanelFileName = { fg = M.get_fg('Normal') or colors.white },
+    Dim1 = { fg = M.get_fg('Comment') or colors.white },
+    Primary = { fg = M.get_fg('Function') or 'Purple' },
+    Secondary = { fg = M.get_fg('String') or 'Orange' },
   }
 end
 
 M.hl_links = {
-  Normal = "Normal",
-  NonText = "NonText",
-  CursorLine = "CursorLine",
-  WinSeparator = "WinSeparator",
-  SignColumn = "Normal",
-  StatusLine = "StatusLine",
-  StatusLineNC = "StatusLineNC",
-  EndOfBuffer = "EndOfBuffer",
-  FilePanelRootPath = "DiffviewFilePanelTitle",
-  FilePanelFileName = "Normal",
-  FilePanelSelected = "Type",
-  FilePanelPath = "Comment",
-  FilePanelInsertions = "diffAdded",
-  FilePanelDeletions = "diffRemoved",
-  FilePanelConflicts = "DiagnosticSignWarn",
-  FolderName = "Directory",
-  FolderSign = "PreProc",
-  Hash = "Identifier",
-  Reference = "Function",
-  ReflogSelector = "Special",
-  StatusAdded = "diffAdded",
-  StatusUntracked = "diffAdded",
-  StatusModified = "diffChanged",
-  StatusRenamed = "diffChanged",
-  StatusCopied = "diffChanged",
-  StatusTypeChange = "diffChanged",
-  StatusUnmerged = "diffChanged",
-  StatusUnknown = "diffRemoved",
-  StatusDeleted = "diffRemoved",
-  StatusBroken = "diffRemoved",
-  StatusIgnored = "Comment",
-  DiffAdd = "DiffAdd",
-  DiffDelete = "DiffDelete",
-  DiffChange = "DiffChange",
-  DiffText = "DiffText",
+  Normal = 'Normal',
+  NonText = 'NonText',
+  CursorLine = 'CursorLine',
+  WinSeparator = 'WinSeparator',
+  SignColumn = 'Normal',
+  StatusLine = 'StatusLine',
+  StatusLineNC = 'StatusLineNC',
+  EndOfBuffer = 'EndOfBuffer',
+  FilePanelRootPath = 'DiffviewFilePanelTitle',
+  FilePanelFileName = 'Normal',
+  FilePanelSelected = 'Type',
+  FilePanelPath = 'Comment',
+  FilePanelInsertions = 'diffAdded',
+  FilePanelDeletions = 'diffRemoved',
+  FilePanelConflicts = 'DiagnosticSignWarn',
+  FolderName = 'Directory',
+  FolderSign = 'PreProc',
+  Hash = 'Identifier',
+  Reference = 'Function',
+  ReflogSelector = 'Special',
+  StatusAdded = 'diffAdded',
+  StatusUntracked = 'diffAdded',
+  StatusModified = 'diffChanged',
+  StatusRenamed = 'diffChanged',
+  StatusCopied = 'diffChanged',
+  StatusTypeChange = 'diffChanged',
+  StatusUnmerged = 'diffChanged',
+  StatusUnknown = 'diffRemoved',
+  StatusDeleted = 'diffRemoved',
+  StatusBroken = 'diffRemoved',
+  StatusIgnored = 'Comment',
+  DiffAdd = 'DiffAdd',
+  DiffDelete = 'DiffDelete',
+  DiffChange = 'DiffChange',
+  DiffText = 'DiffText',
 }
 
 function M.update_diff_hl()
-  local fg = M.get_fg("DiffDelete", true) or "NONE"
-  local bg = M.get_bg("DiffDelete", true) or "NONE"
-  local style = M.get_style("DiffDelete", true) or "NONE"
+  local fg = M.get_fg('DiffDelete', true) or 'NONE'
+  local bg = M.get_bg('DiffDelete', true) or 'NONE'
+  local style = M.get_style('DiffDelete', true) or 'NONE'
 
-  M.hi("DiffviewDiffAddAsDelete", { fg = fg, bg = bg, style = style })
-  M.hi_link("DiffviewDiffDeleteDim", "Comment", { default = true })
+  M.hi('DiffviewDiffAddAsDelete', { fg = fg, bg = bg, style = style })
+  M.hi_link('DiffviewDiffDeleteDim', 'Comment', { default = true })
 
   if config.get_config().enhanced_diff_hl then
-    M.hi_link("DiffviewDiffDelete", "DiffviewDiffDeleteDim")
+    M.hi_link('DiffviewDiffDelete', 'DiffviewDiffDeleteDim')
   end
 end
 
 function M.setup()
   for name, v in pairs(M.get_hl_groups()) do
-    v = vim.tbl_extend("force", v, { default = true })
-    M.hi("Diffview" .. name, v)
+    v = vim.tbl_extend('force', v, { default = true })
+    M.hi('Diffview' .. name, v)
   end
 
   for from, to in pairs(M.hl_links) do
-    M.hi_link("Diffview" .. from, to, { default = true })
+    M.hi_link('Diffview' .. from, to, { default = true })
   end
 
   M.update_diff_hl()

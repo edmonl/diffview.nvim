@@ -1,5 +1,5 @@
-local oop = require("diffview.oop")
-local utils = require("diffview.utils")
+local oop = require('diffview.oop')
+local utils = require('diffview.utils')
 local M = {}
 
 ---@class Node : diffview.Object
@@ -8,7 +8,7 @@ local M = {}
 ---@field data any
 ---@field children Node[]
 ---@field depth integer|nil
-local Node = oop.create_class("Node")
+local Node = oop.create_class('Node')
 
 ---Node constructor
 ---@param name string
@@ -18,9 +18,7 @@ function Node:init(name, data)
   self.data = data
   self.children = {}
 
-  if self.data then
-    self.data._node = self
-  end
+  if self.data then self.data._node = self end
 end
 
 ---Adds a child if it doesn not already exist.
@@ -67,16 +65,12 @@ function Node:sort()
 end
 
 ---@return boolean
-function Node:is_root()
-  return not self.parent
-end
+function Node:is_root() return not self.parent end
 
 ---@param callback fun(node: Node, i: integer, parent: Node): boolean?
 function Node:some(callback)
   for i, child in ipairs(self.children) do
-    if callback(child, i, self) then
-      return
-    end
+    if callback(child, i, self) then return end
   end
 end
 
@@ -98,9 +92,7 @@ function Node:leaves()
   local leaves = {}
 
   self:deep_some(function(node)
-    if #node.children == 0 then
-      leaves[#leaves + 1] = node
-    end
+    if #node.children == 0 then leaves[#leaves + 1] = node end
     return false
   end)
 
@@ -109,9 +101,7 @@ end
 
 ---@return Node?
 function Node:first_leaf()
-  if #self.children == 0 then
-    return
-  end
+  if #self.children == 0 then return end
 
   local cur = self
 
@@ -124,9 +114,7 @@ end
 
 ---@return Node?
 function Node:last_leaf()
-  if #self.children == 0 then
-    return
-  end
+  if #self.children == 0 then return end
 
   local cur = self
 
@@ -139,9 +127,7 @@ end
 
 ---@return Node?
 function Node:next_leaf()
-  if not self.parent then
-    return
-  end
+  if not self.parent then return end
 
   local cur = self:has_children() and self:group_parent() or self
   local sibling = cur:next_sibling()
@@ -157,9 +143,7 @@ end
 
 ---@return Node?
 function Node:prev_leaf()
-  if not self.parent then
-    return
-  end
+  if not self.parent then return end
 
   local cur = self:has_children() and self:group_parent() or self
   local sibling = cur:prev_sibling()
@@ -175,37 +159,27 @@ end
 
 ---@return Node?
 function Node:next_sibling()
-  if not self.parent then
-    return
-  end
+  if not self.parent then return end
 
   local i = utils.vec_indexof(self.parent.children, self)
 
-  if i > -1 and  i < #self.parent.children then
-    return self.parent.children[i + 1]
-  end
+  if i > -1 and i < #self.parent.children then return self.parent.children[i + 1] end
 end
 
 ---@return Node?
 function Node:prev_sibling()
-  if not self.parent then
-    return
-  end
+  if not self.parent then return end
 
   local i = utils.vec_indexof(self.parent.children, self)
 
-  if i > 1 and #self.parent.children > 1 then
-    return self.parent.children[i - 1]
-  end
+  if i > 1 and #self.parent.children > 1 then return self.parent.children[i - 1] end
 end
 
 ---Get the closest parent that has more than one child, or is a child of the
 ---root node.
 ---@return Node?
 function Node:group_parent()
-  if self:is_root() then
-    return
-  end
+  if self:is_root() then return end
 
   local cur = self:has_children() and self or self.parent
 

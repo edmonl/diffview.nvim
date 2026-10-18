@@ -1,9 +1,9 @@
-local async = require("diffview.async")
-local lazy = require("diffview.lazy")
-local oop = require("diffview.oop")
+local async = require('diffview.async')
+local lazy = require('diffview.lazy')
+local oop = require('diffview.oop')
 
-local Job = lazy.access("diffview.job", "Job") ---@type diffview.Job|LazyModule
-local utils = lazy.require("diffview.utils") ---@module "diffview.utils"
+local Job = lazy.access('diffview.job', 'Job') ---@type diffview.Job|LazyModule
+local utils = lazy.require('diffview.utils') ---@module "diffview.utils"
 
 local await = async.await
 local fmt = string.format
@@ -23,7 +23,7 @@ local M = {}
 ---@field on_exit_listeners MultiJob.OnExitCallback[]
 ---@field _started boolean
 ---@field _done boolean
-local MultiJob = oop.create_class("MultiJob")
+local MultiJob = oop.create_class('MultiJob')
 
 ---Predefined fail conditions.
 MultiJob.FAIL_COND = {
@@ -33,14 +33,10 @@ MultiJob.FAIL_COND = {
     local failed = {}
 
     for _, job in ipairs(mj.jobs) do
-      if job.code ~= 0 then
-        failed[#failed + 1] = job
-      end
+      if job.code ~= 0 then failed[#failed + 1] = job end
     end
 
-    if next(failed) then
-      return false, failed, "Job(s) exited with a non-zero exit code!"
-    end
+    if next(failed) then return false, failed, 'Job(s) exited with a non-zero exit code!' end
 
     return true
   end,
@@ -50,16 +46,12 @@ MultiJob.FAIL_COND = {
     local failed = {}
 
     for _, job in ipairs(mj.jobs) do
-      if #job.stdout == 1 and job.stdout[1] == ""
-        or #job.stdout == 0
-      then
+      if #job.stdout == 1 and job.stdout[1] == '' or #job.stdout == 0 then
         failed[#failed + 1] = job
       end
     end
 
-    if next(failed) then
-      return false, failed, "Job(s) expected output, but returned nothing!"
-    end
+    if next(failed) then return false, failed, 'Job(s) expected output, but returned nothing!' end
 
     return true
   end,
@@ -73,20 +65,20 @@ function MultiJob:init(jobs, opt)
   self._started = false
   self._done = false
 
-  self.log_opt = vim.tbl_extend("keep", opt.log_opt or {}, {
-    func = "debug",
+  self.log_opt = vim.tbl_extend('keep', opt.log_opt or {}, {
+    func = 'debug',
     no_stdout = true,
-    debuginfo = debug.getinfo(3, "Sl"),
+    debuginfo = debug.getinfo(3, 'Sl'),
   })
 
   if opt.fail_cond then
-    if type(opt.fail_cond) == "string" then
+    if type(opt.fail_cond) == 'string' then
       self.check_status = MultiJob.FAIL_COND[opt.fail_cond]
       assert(self.check_status, fmt("Unknown fail condition: '%s'", opt.fail_cond))
-    elseif type(opt.fail_cond) == "function" then
+    elseif type(opt.fail_cond) == 'function' then
       self.check_status = opt.fail_cond
     else
-      error("Invalid fail condition: " .. vim.inspect(opt.fail_cond))
+      error('Invalid fail condition: ' .. vim.inspect(opt.fail_cond))
     end
   else
     self.check_status = MultiJob.FAIL_COND.non_zero
@@ -106,9 +98,7 @@ end
 MultiJob.start = async.wrap(function(self, callback)
   ---@diagnostic disable: invisible
   for _, job in ipairs(self.jobs) do
-    if job:is_running() then
-      error("A job is still running!")
-    end
+    if job:is_running() then error('A job is still running!') end
   end
 
   self:reset()
@@ -143,10 +133,10 @@ MultiJob.start = async.wrap(function(self, callback)
         logger:error(err)
 
         for _, job in ipairs(jobs) do
-          logger:log_job(job, { func = "error", no_stdout = true })
+          logger:log_job(job, { func = 'error', no_stdout = true })
         end
 
-        logger:fmt_error("(%d/%d) Retrying failed jobs...", i, self.retry)
+        logger:fmt_error('(%d/%d) Retrying failed jobs...', i, self.retry)
       end
 
       await(async.timeout(1))
@@ -155,9 +145,9 @@ MultiJob.start = async.wrap(function(self, callback)
 
   if not self.log_opt.silent then
     if retry_status == 0 then
-      logger:info("Retry was successful!")
+      logger:info('Retry was successful!')
     elseif retry_status == 1 then
-      logger:error("All retries failed!")
+      logger:error('All retries failed!')
     end
   end
 
@@ -194,34 +184,22 @@ function MultiJob:is_success()
 end
 
 ---@param callback MultiJob.OnExitCallback
-function MultiJob:on_exit(callback)
-  table.insert(self.on_exit_listeners, callback)
-end
+function MultiJob:on_exit(callback) table.insert(self.on_exit_listeners, callback) end
 
 ---@param callback MultiJob.OnRetryCallback
-function MultiJob:on_retry(callback)
-  table.insert(self.on_retry_listeners, callback)
-end
+function MultiJob:on_retry(callback) table.insert(self.on_retry_listeners, callback) end
 
-function MultiJob:is_done()
-  return self._done
-end
+function MultiJob:is_done() return self._done end
 
-function MultiJob:is_started()
-  return self._started
-end
+function MultiJob:is_started() return self._started end
 
-function MultiJob:is_running()
-  return self:is_started() and not self:is_done()
-end
+function MultiJob:is_running() return self:is_started() and not self:is_done() end
 
 ---@return string[]
 function MultiJob:stdout()
   return utils.flatten(
     ---@param value diffview.Job
-    vim.tbl_map(function(value)
-      return value.stdout
-    end, self.jobs)
+    vim.tbl_map(function(value) return value.stdout end, self.jobs)
   )
 end
 
@@ -229,9 +207,7 @@ end
 function MultiJob:stderr()
   return utils.flatten(
     ---@param value diffview.Job
-    vim.tbl_map(function(value)
-      return value.stderr
-    end, self.jobs)
+    vim.tbl_map(function(value) return value.stderr end, self.jobs)
   )
 end
 

@@ -1,1 +1,1 @@
-require("diffview.bootstrap")
+require('diffview.bootstrap')

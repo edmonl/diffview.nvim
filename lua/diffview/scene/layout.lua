@@ -1,9 +1,9 @@
-local async = require("diffview.async")
-local lazy = require("diffview.lazy")
-local oop = require("diffview.oop")
+local async = require('diffview.async')
+local lazy = require('diffview.lazy')
+local oop = require('diffview.oop')
 
-local EventEmitter = lazy.access("diffview.events", "EventEmitter") ---@type EventEmitter|LazyModule
-local utils = lazy.require("diffview.utils") ---@module "diffview.utils"
+local EventEmitter = lazy.access('diffview.events', 'EventEmitter') ---@type EventEmitter|LazyModule
+local utils = lazy.require('diffview.utils') ---@module "diffview.utils"
 
 local api = vim.api
 local await = async.await
@@ -16,7 +16,7 @@ local M = {}
 ---@field pivot_producer fun(): integer?
 ---@field name string
 ---@field state table
-local Layout = oop.create_class("Layout")
+local Layout = oop.create_class('Layout')
 
 function Layout:init(opt)
   opt = opt or {}
@@ -92,13 +92,11 @@ end
 function Layout:use_windows(...)
   local wins = { ... }
 
-  for i = 1, select("#", ...) do
+  for i = 1, select('#', ...) do
     local win = wins[i]
     win.parent = self
 
-    if utils.vec_indexof(self.windows, win) == -1 then
-      table.insert(self.windows, win)
-    end
+    if utils.vec_indexof(self.windows, win) == -1 then table.insert(self.windows, win) end
   end
 end
 
@@ -113,7 +111,7 @@ function Layout:find_pivot()
       local ret
 
       api.nvim_win_call(win.id, function()
-        vim.cmd("aboveleft vsp")
+        vim.cmd('aboveleft vsp')
         ret = api.nvim_get_current_win()
       end)
 
@@ -124,36 +122,28 @@ function Layout:find_pivot()
   if vim.is_callable(self.pivot_producer) then
     local ret = self.pivot_producer()
 
-    if ret then
-      return ret
-    end
+    if ret then return ret end
   end
 
-  vim.cmd("1windo belowright vsp")
+  vim.cmd('1windo belowright vsp')
 
   local pivot = api.nvim_get_current_win()
 
-  if api.nvim_win_is_valid(last_win) then
-    api.nvim_set_current_win(last_win)
-  end
+  if api.nvim_win_is_valid(last_win) then api.nvim_set_current_win(last_win) end
 
   return pivot
 end
 
 ---@return vcs.File[]
 function Layout:files()
-  return utils.tbl_fmap(self.windows, function(v)
-    return v.file
-  end)
+  return utils.tbl_fmap(self.windows, function(v) return v.file end)
 end
 
 ---Check if the buffers for all the files in the layout are loaded.
 ---@return boolean
 function Layout:is_files_loaded()
   for _, f in ipairs(self:files()) do
-    if not f:is_valid() then
-      return false
-    end
+    if not f:is_valid() then return false end
   end
 
   return true
@@ -163,11 +153,11 @@ end
 Layout.open_files = async.void(function(self)
   if #self:files() < #self.windows then
     self:open_null()
-    self.emitter:emit("files_opened")
+    self.emitter:emit('files_opened')
     return
   end
 
-  vim.cmd("diffoff!")
+  vim.cmd('diffoff!')
 
   if not self:is_files_loaded() then
     self:open_null()
@@ -185,7 +175,7 @@ Layout.open_files = async.void(function(self)
   end
 
   self:sync_scroll()
-  self.emitter:emit("files_opened")
+  self.emitter:emit('files_opened')
 end)
 
 function Layout:open_null()
@@ -201,9 +191,7 @@ function Layout:recover(pivot)
   ---@cast pivot -?
 
   for _, win in ipairs(self.windows) do
-    if win.id ~= pivot then
-      pcall(api.nvim_win_close, win.id, true)
-    end
+    if win.id ~= pivot then pcall(api.nvim_win_close, win.id, true) end
   end
 
   self.windows = {}
@@ -215,17 +203,13 @@ end
 ---Check the validity of all composing layout windows.
 ---@return Layout.State
 function Layout:validate()
-  if not next(self.windows) then
-    return { valid = false }
-  end
+  if not next(self.windows) then return { valid = false } end
 
   local state = { valid = true }
 
   for _, win in ipairs(self.windows) do
     state[win] = win:is_valid()
-    if not state[win] then
-      state.valid = false
-    end
+    if not state[win] then state.valid = false end
   end
 
   return state
@@ -233,9 +217,7 @@ end
 
 ---Check the validity if the layout.
 ---@return boolean
-function Layout:is_valid()
-  return self:validate().valid
-end
+function Layout:is_valid() return self:validate().valid end
 
 ---@return boolean
 function Layout:is_nulled()
@@ -252,9 +234,7 @@ end
 function Layout:ensure()
   local state = self:validate()
 
-  if not state.valid then
-    self:recover()
-  end
+  if not state.valid then self:recover() end
 end
 
 ---Save window local options.
@@ -284,7 +264,9 @@ function Layout:sync_scroll()
 
   for _, win in ipairs(self.windows) do
     local lcount = api.nvim_buf_line_count(api.nvim_win_get_buf(win.id))
-    if lcount > max then target, max = win, lcount end
+    if lcount > max then
+      target, max = win, lcount
+    end
   end
 
   local main_win = self:get_main_win()
@@ -295,12 +277,10 @@ function Layout:sync_scroll()
       if win == target then
         -- Scroll to trigger the scrollbind and sync the windows. This works more
         -- consistently than calling `:syncbind`.
-        vim.cmd("norm! " .. api.nvim_replace_termcodes("<c-e><c-y>", true, true, true))
+        vim.cmd('norm! ' .. api.nvim_replace_termcodes('<c-e><c-y>', true, true, true))
       end
 
-      if win.id ~= curwin then
-        api.nvim_exec_autocmds("WinLeave", { modeline = false })
-      end
+      if win.id ~= curwin then api.nvim_exec_autocmds('WinLeave', { modeline = false }) end
     end)
   end
 
