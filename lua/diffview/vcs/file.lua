@@ -249,51 +249,74 @@ File.create_buffer = async.wrap(function(self, callback)
 
   -- Create buffer and set name *before* calling `produce_data()` to ensure
   -- that multiple file instances won't ever try to create the same file.
-  self.bufnr = api.nvim_create_buf(false, false)
-  api.nvim_buf_set_name(self.bufnr, fullname)
+  local bufnr = api.nvim_create_buf(false, false)
+  self.bufnr = bufnr
 
-  local err, lines = await(self:produce_data())
-  if err then error(table.concat(err, '\n')) end
-
-  await(async.scheduler())
-
-  -- Revalidate buffer in case the file was destroyed before `produce_data()`
-  -- returned.
-  if not api.nvim_buf_is_valid(self.bufnr) then
-    error('The buffer has been invalidated!')
-    return
-  end
-  local bufopts = vim.deepcopy(File.bufopts)
-
-  if self.rev.type == RevType.STAGE and self.rev.stage == 0 then
-    self.blob_hash = self.adapter:file_blob_hash(self.path)
-    bufopts.modifiable = true
-    bufopts.buftype = nil
-    bufopts.undolevels = nil
-    utils.tbl_set(File.index_bufmap, { self.adapter.ctx.toplevel, self.path }, self.bufnr)
-
-    api.nvim_create_autocmd('BufWriteCmd', {
-      buffer = self.bufnr,
-      nested = true,
-      callback = function() self.adapter:stage_index_file(self) end,
-    })
+  -- A disposed file can start another load before this one finishes. Always
+  -- target this load's buffer and verify that the file still owns it.
+  local function validate_buffer()
+    if self.bufnr ~= bufnr or not api.nvim_buf_is_valid(bufnr) then
+      error('The buffer has been invalidated!')
+    end
   end
 
-  for option, value in pairs(bufopts) do
-    api.nvim_buf_set_option(self.bufnr, option, value)
+  local ok, err = pcall(function()
+    api.nvim_buf_set_name(bufnr, fullname)
+
+    local err, lines = await(self:produce_data())
+    if err then error(table.concat(err, '\n')) end
+
+    await(async.scheduler())
+    validate_buffer()
+    local bufopts = vim.deepcopy(File.bufopts)
+
+    if self.rev.type == RevType.STAGE and self.rev.stage == 0 then
+      local blob_hash = self.adapter:file_blob_hash(self.path)
+      validate_buffer()
+      self.blob_hash = blob_hash
+      bufopts.modifiable = true
+      bufopts.buftype = nil
+      bufopts.undolevels = nil
+      utils.tbl_set(File.index_bufmap, { self.adapter.ctx.toplevel, self.path }, bufnr)
+
+      api.nvim_create_autocmd('BufWriteCmd', {
+        buffer = bufnr,
+        nested = true,
+        callback = function() self.adapter:stage_index_file(self) end,
+      })
+    end
+
+    for option, value in pairs(bufopts) do
+      api.nvim_buf_set_option(bufnr, option, value)
+    end
+
+    local last_modifiable = vim.bo[bufnr].modifiable
+    local last_modified = vim.bo[bufnr].modified
+    vim.bo[bufnr].modifiable = true
+    api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+
+    api.nvim_buf_call(bufnr, function() vim.cmd('filetype detect') end)
+    validate_buffer()
+
+    vim.bo[bufnr].modifiable = last_modifiable
+    vim.bo[bufnr].modified = last_modified
+    self:post_buf_created()
+  end)
+
+  if not ok then
+    -- Clear only this load's state; a newer load may already own another buffer.
+    if self.bufnr == bufnr then
+      self:detach_buffer()
+      self.bufnr = nil
+      self.blob_hash = nil
+      local bufmap = File.index_bufmap[self.adapter.ctx.toplevel]
+      if bufmap and bufmap[self.path] == bufnr then bufmap[self.path] = nil end
+      File.safe_delete_buf(bufnr)
+    end
+    error(err, 0)
   end
 
-  local last_modifiable = vim.bo[self.bufnr].modifiable
-  local last_modified = vim.bo[self.bufnr].modified
-  vim.bo[self.bufnr].modifiable = true
-  api.nvim_buf_set_lines(self.bufnr, 0, -1, false, lines)
-
-  api.nvim_buf_call(self.bufnr, function() vim.cmd('filetype detect') end)
-
-  vim.bo[self.bufnr].modifiable = last_modifiable
-  vim.bo[self.bufnr].modified = last_modified
-  self:post_buf_created()
-  callback(self.bufnr)
+  callback(bufnr)
   ---@diagnostic enable: invisible
 end)
 
