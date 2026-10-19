@@ -14,6 +14,7 @@ local arg_parser = require('diffview.arg_parser')
 local async = require('diffview.async')
 local config = require('diffview.config')
 local lazy = require('diffview.lazy')
+local line_history = require('diffview.vcs.adapters.git.line_history')
 local oop = require('diffview.oop')
 local utils = require('diffview.utils')
 local vcs_utils = require('diffview.vcs.utils')
@@ -448,7 +449,7 @@ end
 ---@field subject string
 ---@field namestat string[]
 ---@field numstat string[]
----@field diff? diff.FileEntry[]
+---@field diff? git.LineHistoryFile[]
 ---@field valid boolean
 
 ---@param stat_data string[]
@@ -476,7 +477,7 @@ local function structure_fh_data(stat_data, keep_diff)
   ret.namestat = namestat
   ret.numstat = numstat
 
-  if keep_diff then ret.diff = vcs_utils.parse_diff(stat_data) end
+  if keep_diff then ret.diff = line_history.parse(stat_data) end
 
   -- Soft validate the data
   ret.valid = #namestat == #numstat

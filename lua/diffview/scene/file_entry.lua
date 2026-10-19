@@ -236,7 +236,7 @@ function FileEntry:update_merge_context(ctx)
 end
 
 ---Derive custom folds from the hunks in a diff patch.
----@param diff diff.FileEntry
+---@param diff git.LineHistoryFile
 function FileEntry:update_patch_folds(diff)
   if not self.layout:instanceof(Diff2.__get()) then return end
 

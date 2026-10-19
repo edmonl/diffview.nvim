@@ -17,7 +17,7 @@ local M = {}
 ---@field ref_names string
 ---@field subject string
 ---@field body string
----@field diff? diff.FileEntry[]
+---@field diff? git.LineHistoryFile[]
 local Commit = oop.create_class('Commit')
 
 function Commit:init(opt)

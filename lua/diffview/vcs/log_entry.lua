@@ -72,7 +72,7 @@ function LogEntry:update_stats()
 end
 
 ---@param path string
----@return diff.FileEntry?
+---@return git.LineHistoryFile?
 function LogEntry:get_diff(path)
   if not self.commit.diff then return nil end
 

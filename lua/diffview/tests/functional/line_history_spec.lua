@@ -1,7 +1,7 @@
 local async = require('diffview.async')
 local helpers = require('diffview.tests.helpers')
 local vcs = require('diffview.vcs')
-local vcs_utils = require('diffview.vcs.utils')
+local line_history = require('diffview.vcs.adapters.git.line_history')
 local Diff2Hor = require('diffview.scene.layouts.diff_2_hor').Diff2Hor
 local File = require('diffview.vcs.file').File
 local GitRev = require('diffview.vcs.adapters.git.rev').GitRev
@@ -48,7 +48,7 @@ describe('Git line-history patches', function()
       '--format=%H %P',
       ...
     )
-    return vcs_utils.parse_diff(lines), vim.split(lines[1], ' ', { trimempty = true }), lines
+    return line_history.parse(lines), vim.split(lines[1], ' ', { trimempty = true }), lines
   end
 
   -- Assert only the paths and coordinates consumed by line history and folds;
@@ -182,9 +182,11 @@ describe('Git line-history patches', function()
   )
 
   it(
-    'keeps file boundaries when tracing ranges in several files',
+    'keeps file boundaries and ignores path-like text inside hunks',
     async_test(function()
-      write('tracked.txt', { 'before', 'changed again', 'stable', 'TWO', 'after', 'tail' })
+      write('tracked.txt', { 'before', '-- a/pretend-old.txt', 'stable', 'TWO', 'after', 'tail' })
+      commit('patch-like content')
+      write('tracked.txt', { 'before', '++ b/pretend-new.txt', 'stable', 'TWO', 'after', 'tail' })
       write('new name.txt', { 'before', 'also changed', 'after' })
       commit('change both files')
       local patches = trace('-L2,2:tracked.txt', '-L2,2:new name.txt')
@@ -259,7 +261,7 @@ describe('Git line-history patches', function()
           '-L2,2:tracked.txt',
           '--diff-merges=' .. mode
         )
-        local patches = vcs_utils.parse_diff(lines)
+        local patches = line_history.parse(lines)
         local headers = 0
         for _, line in ipairs(lines) do
           if line:match('^diff ') then
