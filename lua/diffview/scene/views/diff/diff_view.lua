@@ -116,6 +116,7 @@ function DiffView:file_open_post(e, new_entry, old_entry)
     local file = new_entry.layout:get_main_win().file
 
     local count_conflicts = vim.schedule_wrap(function()
+      if self.closing:check() or not file:is_ready() then return end
       local conflicts = vcs_utils.parse_conflicts(api.nvim_buf_get_lines(file.bufnr, 0, -1, false))
 
       new_entry.stats = new_entry.stats or {}

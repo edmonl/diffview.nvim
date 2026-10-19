@@ -1,6 +1,7 @@
 local async = require('diffview.async')
 local lazy = require('diffview.lazy')
 local oop = require('diffview.oop')
+local RevType = require('diffview.vcs.rev').RevType
 
 local EventEmitter = lazy.access('diffview.events', 'EventEmitter') ---@type EventEmitter|LazyModule
 local utils = lazy.require('diffview.utils') ---@module "diffview.utils"
@@ -32,12 +33,17 @@ end
 ---@param pivot? integer The window ID of the window around which the layout will be created.
 Layout.create = async.void(function(self, pivot) oop.abstract_stub() end)
 
----@abstract
 ---@param rev Rev
 ---@param status string Git status symbol.
 ---@param sym string
+---@param merge_stages? table<integer, boolean> Existing unmerged index stages.
 ---@return boolean
-function Layout.should_null(rev, status, sym) oop.abstract_stub() end
+function Layout.should_null(rev, status, sym, merge_stages)
+  return rev.type == RevType.STAGE
+    and rev.stage > 0
+    and merge_stages ~= nil
+    and not merge_stages[rev.stage]
+end
 
 ---@abstract
 ---@param self Layout

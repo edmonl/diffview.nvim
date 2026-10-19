@@ -309,7 +309,16 @@ File.create_buffer = async.wrap(function(self, callback)
 
   self.ready = false
   if self.binary == nil and not config.get_config().diff_binaries then
-    self.binary = self.adapter:is_binary(self.path, self.rev)
+    if
+      self.kind == 'conflicting'
+      and self.rev.type == RevType.LOCAL
+      and not pl:stat(self.absolute_path)
+    then
+      -- A missing merge result must still open as an editable working-tree buffer.
+      self.binary = false
+    else
+      self.binary = self.adapter:is_binary(self.path, self.rev)
+    end
   end
 
   if self.nulled or self.binary then

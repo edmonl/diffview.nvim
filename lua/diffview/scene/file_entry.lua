@@ -40,6 +40,7 @@ local fstat_cache = {}
 ---@field kind vcs.FileKind
 ---@field commit Commit|nil
 ---@field merge_ctx vcs.MergeContext?
+---@field merge_stages? table<integer, boolean> Existing unmerged index stages, including hidden panes.
 ---@field active boolean
 ---@field opened boolean
 local FileEntry = oop.create_class('FileEntry')
@@ -55,6 +56,7 @@ local FileEntry = oop.create_class('FileEntry')
 ---@field kind vcs.FileKind
 ---@field commit? Commit
 ---@field merge_ctx? vcs.MergeContext
+---@field merge_stages? table<integer, boolean>
 
 ---FileEntry constructor
 ---@param opt FileEntry.init.Opt
@@ -73,6 +75,7 @@ function FileEntry:init(opt)
   self.kind = opt.kind
   self.commit = opt.commit
   self.merge_ctx = opt.merge_ctx
+  self.merge_stages = opt.merge_stages
   self.active = false
   self.opened = false
 end
@@ -88,6 +91,10 @@ end
 ---Reconcile empty sides while retaining files whose empty state is unchanged.
 ---@param entry FileEntry Updated entry for the same path.
 function FileEntry:update_null_buffers(entry)
+  self.merge_stages = entry.merge_stages
+  -- The refreshed entry uses the configured layout; this entry may have been
+  -- cycled to one with additional panes, such as the merge base.
+  if self.layout.class ~= entry.layout.class then entry:convert_layout(self.layout.class) end
   for _, symbol in ipairs({ 'a', 'b', 'c', 'd' }) do
     local current, updated = self.layout[symbol], entry.layout[symbol]
     if current and updated and current.file.nulled ~= updated.file.nulled then
@@ -135,7 +142,10 @@ function FileEntry:convert_layout(target_layout)
       commit = self.commit,
       get_data = get_data,
       rev = rev,
-      nulled = select(2, pcall(target_layout.should_null, rev, self.status, symbol)),
+      nulled = select(
+        2,
+        pcall(target_layout.should_null, rev, self.status, symbol, self.merge_stages)
+      ),
     }) --[[@as vcs.File ]]
   end
 
@@ -333,7 +343,7 @@ function FileEntry.with_layout(layout_class, opt)
       nulled = utils.sate(
         opt.null_overrides and opt.null_overrides[symbol],
         opt.nulled,
-        select(2, pcall(layout_class.should_null, rev, opt.status, symbol))
+        select(2, pcall(layout_class.should_null, rev, opt.status, symbol, opt.merge_stages))
       ),
     }) --[[@as vcs.File ]]
   end
@@ -347,6 +357,7 @@ function FileEntry.with_layout(layout_class, opt)
     kind = opt.kind,
     commit = opt.commit,
     revs = opt.revs,
+    merge_stages = opt.merge_stages,
     layout = layout_class({
       a = create_file(opt.revs.a, 'a'),
       b = create_file(opt.revs.b, 'b'),

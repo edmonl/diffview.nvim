@@ -65,12 +65,5 @@ end)
 
 function Diff3:get_main_win() return self.b end
 
----FIXME
----@override
----@param rev Rev
----@param status string Git status symbol.
----@param sym Diff3.WindowSymbol
-function Diff3.should_null(rev, status, sym) return false end
-
 M.Diff3 = Diff3
 return M

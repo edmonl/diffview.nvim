@@ -1640,6 +1640,36 @@ function GitAdapter:show_untracked(opt)
   return vim.trim(out[1] or '') ~= 'no'
 end
 
+---Read all existing conflict stages in one batch. A missing stage is an absent
+---version, whereas a present stage can contain a genuinely empty file.
+---@return string[]? err
+---@return table<string, table<integer, boolean>>? stages
+function GitAdapter:get_unmerged_stages()
+  -- Read raw NUL-delimited records so tabs and line breaks in paths survive.
+  local result = vim
+    .system(
+      utils.vec_join(self:get_command(), 'ls-files', '--unmerged', '--full-name', '-z'),
+      { cwd = self.ctx.toplevel }
+    )
+    :wait()
+
+  if result.code ~= 0 then
+    return utils.vec_join(
+      'Failed to read unmerged index stages!',
+      vim.split(result.stderr or '', '\n', { trimempty = true })
+    )
+  end
+
+  local stages = {}
+  for record in result.stdout:gmatch('[^%z]+') do
+    local stage, path = record:match('^%d+ %x+ ([123])\t(.*)$')
+    stages[path] = stages[path] or {}
+    stages[path][tonumber(stage)] = true
+  end
+
+  return nil, stages
+end
+
 GitAdapter.tracked_files = async.wrap(function(self, left, right, args, kind, opt, callback)
   ---@type FileEntry[]
   local files = {}
@@ -1730,25 +1760,36 @@ GitAdapter.tracked_files = async.wrap(function(self, left, right, args, kind, op
   end
 
   if kind == 'working' and next(conflict_map) then
+    await(async.scheduler())
+    local err, merge_stages = self:get_unmerged_stages()
+    if err then
+      callback(err, nil)
+      return
+    end
+
     data = vim.tbl_filter(function(v) return not conflict_map[v.name] end, data)
 
     for _, v in pairs(conflict_map) do
-      table.insert(
-        conflicts,
-        FileEntry.with_layout(opt.merge_layout, {
-          adapter = self,
-          path = v.name,
-          oldpath = v.oldname,
-          status = 'U',
-          kind = 'conflicting',
-          revs = {
-            a = self.Rev(RevType.STAGE, 2), -- ours
-            b = self.Rev(RevType.LOCAL), -- local
-            c = self.Rev(RevType.STAGE, 3), -- theirs
-            d = self.Rev(RevType.STAGE, 1), -- base
-          },
-        })
-      )
+      -- A conflict can be resolved between the status and index queries.
+      if merge_stages[v.name] then
+        table.insert(
+          conflicts,
+          FileEntry.with_layout(opt.merge_layout, {
+            adapter = self,
+            path = v.name,
+            oldpath = v.oldname,
+            status = 'U',
+            kind = 'conflicting',
+            merge_stages = merge_stages[v.name],
+            revs = {
+              a = self.Rev(RevType.STAGE, 2), -- ours
+              b = self.Rev(RevType.LOCAL), -- local
+              c = self.Rev(RevType.STAGE, 3), -- theirs
+              d = self.Rev(RevType.STAGE, 1), -- base
+            },
+          })
+        )
+      end
     end
   end
 

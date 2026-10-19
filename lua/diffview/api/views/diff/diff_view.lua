@@ -10,6 +10,7 @@ local vcs_utils = lazy.require('diffview.vcs') ---@module "diffview.vcs"
 local oop = lazy.require('diffview.oop') ---@module "diffview.oop"
 local utils = lazy.require('diffview.utils') ---@module "diffview.utils"
 
+local await = async.await
 local logger = DiffviewGlobal.logger
 
 local M = {}
@@ -66,7 +67,11 @@ function CDiffView:init(opt)
   }))
 
   if type(opt.files) == 'table' and not vim.tbl_isempty(opt.files) then
-    local files = self:create_file_entries(opt.files)
+    local files, err = self:create_file_entries(opt.files)
+    if err then
+      utils.err(err, true)
+      return
+    end
 
     for kind, entries in pairs(files) do
       for _, entry in ipairs(entries) do
@@ -95,11 +100,17 @@ CDiffView.get_updated_files = async.wrap(function(self, callback)
       break
     end
 
+    await(async.scheduler())
     ---@diagnostic disable-next-line: redefined-local
-    local ok, entries = pcall(self.create_file_entries, self, new_files)
+    local ok, entries, entry_err = pcall(self.create_file_entries, self, new_files)
 
     if not ok then
       err = { 'Integrating plugin provided malformed file data!' }
+      break
+    end
+
+    if entry_err then
+      err = entry_err
       break
     end
 
@@ -112,11 +123,28 @@ CDiffView.get_updated_files = async.wrap(function(self, callback)
   callback(err, nil)
 end)
 
+---Create entries using Git's available stages for conflict panes.
+---@param files table
+---@return table? entries
+---@return string[]? err
 function CDiffView:create_file_entries(files)
   local entries = {}
+  local merge_stages
+  if files.conflicting and #files.conflicting > 0 then
+    local err
+    err, merge_stages = self.adapter:get_unmerged_stages()
+    if err then return nil, err end
+  end
 
   local sections = {
-    { kind = 'conflicting', files = files.conflicting or {} },
+    {
+      kind = 'conflicting',
+      -- Git's index may have been resolved since the provider captured its list.
+      files = vim.tbl_filter(
+        function(file) return merge_stages[file.path] ~= nil end,
+        files.conflicting or {}
+      ),
+    },
     { kind = 'working', files = files.working or {}, left = self.left, right = self.right },
     {
       kind = 'staged',
@@ -139,6 +167,7 @@ function CDiffView:create_file_entries(files)
             oldpath = file_data.oldpath,
             status = 'U',
             kind = 'conflicting',
+            merge_stages = merge_stages[file_data.path],
             revs = {
               a = Rev(RevType.STAGE, 2),
               b = Rev(RevType.LOCAL),

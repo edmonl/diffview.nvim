@@ -421,6 +421,10 @@ view.x.layout                                   *diffview-config-view.x.layout*
               • C: THEIRS (incoming branch)
               • D: BASE (common ancestor)
 
+            A merge version missing from the index is shown as an empty pane.
+            For example, an add/add conflict has no BASE version. LOCAL remains
+            editable even when the working-tree result file does not exist.
+
                                                 *diffview-layouts*
             {diff1_plain}
                 Available for: merge_tool

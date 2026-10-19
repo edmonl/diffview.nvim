@@ -78,7 +78,7 @@ end)
 
 function Diff1:get_main_win() return self.b end
 
----FIXME
+---Keep the working-tree merge result editable, including when it is absent on disk.
 ---@override
 ---@param rev Rev
 ---@param status string Git status symbol.
