@@ -80,6 +80,14 @@ Get started by opening file history for:
 
 For more info, see `:h :DiffviewFileHistory`.
 
+## Limitations
+
+File history shows two-way comparisons, normally against a commit's first parent. A combined view comparing a merge commit against all its parents is not supported. The `--diff-merges=combined` and `--diff-merges=dense-combined` options control how Git reports merge changes; they do not enable a combined multi-parent view.
+
+The three- and four-pane merge layouts are for resolving working-tree conflicts.
+
+For custom-view integration restrictions, see `:h diffview-api-limitations`.
+
 ## Usage
 
 ### `:DiffviewOpen [git rev] [options] [ -- {paths...}]`
@@ -245,7 +253,8 @@ require("diffview").setup({
     log_options = {   -- See |diffview-config-log_options|
       git = {
         single_file = {
-          diff_merges = "combined",
+          diff_merges = "first-parent",
+          follow = true,
         },
         multi_file = {
           diff_merges = "first-parent",

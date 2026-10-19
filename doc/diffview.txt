@@ -304,6 +304,16 @@ COMMANDS                                        *diffview-commands*
                     • `dense-combined`
                     • `remerge`
 
+                                                *diffview-history-limitations*
+                This option controls how Git reports merge changes. File
+                history shows two-way comparisons, normally against a commit's
+                first parent. A combined view comparing a merge commit against
+                all its parents is not supported. Neither `combined` nor
+                `dense-combined` enables such a view.
+
+                The three- and four-pane merge layouts are for resolving
+                working-tree conflicts; see |diffview-merge-tool|.
+
         --author={pattern}
                 Limit the commits output to ones with author/committer header
                 lines that match the specified {pattern} (regular expression).
@@ -1425,6 +1435,15 @@ API                                             *diffview-api*
 Diffview provides an API that lets plugins supply custom file data to create
 custom diffviews.
 
+                                                *diffview-api-limitations*
+Limitations: ~
+
+1. Custom views require a Git repository.
+2. Custom content providers apply only to working and staged entries. LOCAL
+   revisions use the working-tree buffer directly.
+3. Custom conflict contents and conflict empty-side overrides are not supported.
+   Conflicting entries use Git's index stages and the working-tree buffer.
+
 Example usage: ~
 
 Run this from the root of a Git repository. Replace `example.txt` with a
@@ -1520,11 +1539,16 @@ CDiffView                                       *diffview.api.views.diff.diff_vi
 
 
                 {get_file_data} (function)
-                    This should return a list of lines that make up the buffer
-                    indicated by `path` and `split`.
+                    Return the lines for the buffer indicated by `path` and
+                    `split`, for working and staged entries. LOCAL revisions
+                    read the working-tree buffer directly. This function is
+                    not called for sides represented by the null buffer.
+
+                    Conflicting entries always use Git's index stages and the
+                    working-tree buffer; this function is not used for them.
 
                     Parameters: ~
-                        {kind} ("working"|"staged"|"conflicting")
+                        {kind} ("working"|"staged")
                         {path} (string)             Path to the file, relative to
                                                     git root.
                         {split} ("left"|"right")
@@ -1561,6 +1585,9 @@ FileData                                        *diffview.api.views.diff.diff_vi
                 Override whether the left diff buffer is represented by the
                 null buffer. True forces an empty side; false keeps the normal
                 buffer. If omitted, infer from the Git status and revision.
+                Applies only to working and staged entries. Conflicting entries
+                ignore both flags and determine empty sides from Git's
+                available index stages.
 
             {right_null} (boolean|nil)
                 Like `left_null`, but for the right diff buffer. Changes to
@@ -1661,6 +1688,9 @@ LogOptions                                      *diffview.git.LogOptions*
                     • `"combined"`
                     • `"dense-combined"`
                     • `"remerge"`
+
+                These modes do not enable a combined multi-parent view. See
+                |diffview-history-limitations|.
 
             {author} (string)
                 Limit the commits output to ones with author/committer header

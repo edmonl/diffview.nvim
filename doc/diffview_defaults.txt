@@ -64,7 +64,8 @@ DEFAULT CONFIG                                  *diffview.defaults*
       log_options = {   -- See |diffview-config-log_options|
         git = {
           single_file = {
-            diff_merges = "combined",
+            diff_merges = "first-parent",
+            follow = true,
           },
           multi_file = {
             diff_merges = "first-parent",

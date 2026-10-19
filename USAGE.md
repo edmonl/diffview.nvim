@@ -197,7 +197,7 @@ keymaps = {
     },
     {
       "n", "ca",
-      "<Cmd>sp <bar> wincmd J <bar> term git commit -amend<CR>",
+      "<Cmd>sp <bar> wincmd J <bar> term git commit --amend<CR>",
       { desc = "Amend the last commit" },
     },
   },
