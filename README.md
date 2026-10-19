@@ -3,6 +3,9 @@
 Single tabpage interface for easily cycling through diffs for all modified files
 for any git rev.
 
+> [!NOTE]
+> This repository is actively developed with new features and bug fixes, while development of the [original project](https://github.com/sindrets/diffview.nvim) has largely stopped for years.
+
 ![preview](https://user-images.githubusercontent.com/2786478/131269942-e34100dd-cbb9-48fe-af31-6e518ce06e9e.png)
 
 
@@ -15,8 +18,7 @@ for any git rev.
 
 ## Requirements
 
-- Git ≥ 2.31.0 (for Git support)
-- Mercurial ≥ 5.4.0 (for Mercurial support)
+- Git ≥ 2.31.0
 - Neovim ≥ 0.7.0 (with LuaJIT)
 - [nvim-web-devicons](https://github.com/nvim-tree/nvim-web-devicons) (optional) For file icons
 
@@ -26,12 +28,12 @@ Install the plugin with your package manager of choice.
 
 ```vim
 " Plug
-Plug 'sindrets/diffview.nvim'
+Plug 'edmonl/diffview.nvim'
 ```
 
 ```lua
 -- Packer
-use "sindrets/diffview.nvim" 
+use "edmonl/diffview.nvim"
 ```
 
 ## Merge Tool
@@ -101,7 +103,7 @@ You can also provide additional paths to narrow down what files are shown:
 - `:DiffviewOpen HEAD~2 -- lua/diffview plugin`
 
 For information about additional `[options]`, visit the
-[documentation](https://github.com/sindrets/diffview.nvim/blob/main/doc/diffview.txt).
+[documentation](doc/diffview.txt).
 
 Additional commands for convenience:
 
@@ -185,7 +187,6 @@ require("diffview").setup({
   diff_binaries = false,    -- Show diffs for binaries
   enhanced_diff_hl = false, -- See |diffview-config-enhanced_diff_hl|
   git_cmd = { "git" },      -- The git executable followed by default args.
-  hg_cmd = { "hg" },        -- The hg executable followed by default args.
   use_icons = true,         -- Requires nvim-web-devicons
   show_help_hints = true,   -- Show hints for how to open the help panel
   watch_index = true,       -- Update views and index buffers when the git index changes.
@@ -249,10 +250,6 @@ require("diffview").setup({
         multi_file = {
           diff_merges = "first-parent",
         },
-      },
-      hg = {
-        single_file = {},
-        multi_file = {},
       },
     },
     win_config = {    -- See |diffview-config-win_config|

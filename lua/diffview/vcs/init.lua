@@ -1,5 +1,4 @@
 local GitAdapter = require('diffview.vcs.adapters.git').GitAdapter
-local HgAdapter = require('diffview.vcs.adapters.hg').HgAdapter
 
 local M = {}
 
@@ -15,33 +14,28 @@ local M = {}
 ---@return string? err
 ---@return VCSAdapter? adapter
 function M.get_adapter(opt)
-  local adapter_kinds = { GitAdapter, HgAdapter }
-
   if not opt.cmd_ctx then opt.cmd_ctx = {} end
 
-  for _, kind in ipairs(adapter_kinds) do
+  if not GitAdapter.bootstrap.done then GitAdapter.run_bootstrap() end
+  if GitAdapter.bootstrap.ok then
     local path_args
     local top_indicators = opt.top_indicators
 
-    if not kind.bootstrap.done then kind.run_bootstrap() end
-    if not kind.bootstrap.ok then goto continue end
-
     if not top_indicators then
-      path_args, top_indicators = kind.get_repo_paths(opt.cmd_ctx.path_args, opt.cmd_ctx.cpath)
+      path_args, top_indicators =
+        GitAdapter.get_repo_paths(opt.cmd_ctx.path_args, opt.cmd_ctx.cpath)
     end
 
-    local err, toplevel = kind.find_toplevel(top_indicators)
+    local err, toplevel = GitAdapter.find_toplevel(top_indicators)
 
     if not err then
       -- Create a new adapter instance. Store the resolved path args and the
       -- cpath in the adapter context.
-      return kind.create(toplevel, path_args, opt.cmd_ctx.cpath)
+      return GitAdapter.create(toplevel, path_args, opt.cmd_ctx.cpath)
     end
-
-    ::continue::
   end
 
-  return 'Not a repo (or any parent), or no supported VCS adapter!'
+  return 'Not a Git repo (or any parent), or Git is unavailable!'
 end
 
 return M

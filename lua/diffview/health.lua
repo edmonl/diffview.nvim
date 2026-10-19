@@ -70,29 +70,20 @@ function M.check()
       return
     end
 
-    health.info('The plugin requires at least one of the supported VCS tools to be valid.')
+    health.info('The plugin requires Git.')
 
-    local has_valid_adapter = false
-    local adapter_kinds = {
-      { class = require('diffview.vcs.adapters.git').GitAdapter, name = 'Git' },
-      { class = require('diffview.vcs.adapters.hg').HgAdapter, name = 'Mercurial' },
-    }
+    local GitAdapter = require('diffview.vcs.adapters.git').GitAdapter
+    local bs = GitAdapter.bootstrap
+    if not bs.done then GitAdapter.run_bootstrap() end
 
-    for _, kind in ipairs(adapter_kinds) do
-      local bs = kind.class.bootstrap
-      if not bs.done then kind.class.run_bootstrap() end
+    if bs.version_string then health.ok('Git found.') end
 
-      if bs.version_string then health.ok(fmt('%s found.', kind.name)) end
-
-      if bs.ok then
-        health.ok(fmt('%s is up-to-date. (%s)', kind.name, bs.version_string))
-        has_valid_adapter = true
-      else
-        health.warn(bs.err or (kind.name .. ': Unknown error'))
-      end
+    if bs.ok then
+      health.ok(fmt('Git is up-to-date. (%s)', bs.version_string))
+    else
+      health.warn(bs.err or 'Git: Unknown error')
+      health.error('No valid Git executable was found!')
     end
-
-    if not has_valid_adapter then health.error('No valid VCS tool was found!') end
   end)()
 end
 
