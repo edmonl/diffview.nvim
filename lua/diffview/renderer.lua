@@ -11,8 +11,8 @@ M.last_draw_time = 0
 ---@class renderer.HlData
 ---@field group string
 ---@field line_idx integer
----@field first integer 0 indexed, inclusive
----@field last integer Exclusive
+---@field first integer Byte column, 0 indexed, inclusive
+---@field last integer Exclusive byte column; negative values extend to end of line
 
 ---@class renderer.HlList
 ---@field offset integer
@@ -494,16 +494,18 @@ function M.render(bufid, data)
 
   api.nvim_buf_set_lines(bufid, 0, -1, false, lines)
   api.nvim_buf_clear_namespace(bufid, data.namespace, 0, -1)
+  local line_count = api.nvim_buf_line_count(bufid)
   for _, t in ipairs(hl_data) do
     for _, hl in ipairs(t) do
-      api.nvim_buf_add_highlight(
-        bufid,
-        data.namespace,
-        hl.group,
-        hl.line_idx + (t.offset or 0),
-        hl.first,
-        hl.last
-      )
+      local row = hl.line_idx + (t.offset or 0)
+      if row < line_count then
+        api.nvim_buf_set_extmark(bufid, data.namespace, row, hl.first, {
+          hl_group = hl.group,
+          end_row = hl.last < 0 and row + 1 or row,
+          end_col = hl.last < 0 and 0 or hl.last,
+          strict = false,
+        })
+      end
     end
   end
 
