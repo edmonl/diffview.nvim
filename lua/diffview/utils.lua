@@ -318,7 +318,7 @@ function M.set_local(winids, option_map, opt)
     api.nvim_win_call(id, function()
       for option, value in pairs(option_map) do
         local o = opt
-        local fullname = api.nvim_get_option_info(option).name
+        local fullname = api.nvim_get_option_info2(option, {}).name
         local is_list_like = list_like_options[fullname]
         local cur_value = vim.o[fullname]
 

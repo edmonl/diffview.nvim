@@ -476,8 +476,8 @@ function M.render(bufid, data)
   if not api.nvim_buf_is_loaded(bufid) then return end
 
   local last = vim.uv.hrtime()
-  local was_modifiable = api.nvim_buf_get_option(bufid, 'modifiable')
-  api.nvim_buf_set_option(bufid, 'modifiable', true)
+  local was_modifiable = api.nvim_get_option_value('modifiable', { buf = bufid })
+  api.nvim_set_option_value('modifiable', true, { buf = bufid, scope = 'local' })
 
   local lines, hl_data
   local line_idx = 0
@@ -507,7 +507,7 @@ function M.render(bufid, data)
     end
   end
 
-  api.nvim_buf_set_option(bufid, 'modifiable', was_modifiable)
+  api.nvim_set_option_value('modifiable', was_modifiable, { buf = bufid, scope = 'local' })
   M.last_draw_time = (vim.uv.hrtime() - last) / 1000000
 end
 
