@@ -558,7 +558,7 @@ do
     return function()
       if vim.wo.foldmethod ~= 'manual' then
         local ok, msg = pcall(vim.cmd, 'norm! ' .. fold_cmd)
-        if not ok and msg then api.nvim_err_writeln(msg) end
+        if not ok and msg then api.nvim_echo({ { msg } }, true, { err = true }) end
         return
       end
 
@@ -575,7 +575,7 @@ do
           end)
         end
 
-        if err then api.nvim_err_writeln(err) end
+        if err then api.nvim_echo({ { err } }, true, { err = true }) end
       end
     end
   end

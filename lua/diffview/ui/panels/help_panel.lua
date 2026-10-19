@@ -95,10 +95,10 @@ end
 function HelpPanel:init_buffer()
   HelpPanel.super_class.init_buffer(self)
   local conf = get_user_config().keymaps
-  local default_opt = { silent = true, nowait = true, buffer = self.bufid }
+  local default_opt = { silent = true, nowait = true, buf = self.bufid }
 
   for _, mapping in ipairs(conf.help_panel) do
-    local map_opt = vim.tbl_extend('force', default_opt, mapping[4] or {}, { buffer = self.bufid })
+    local map_opt = vim.tbl_extend('force', default_opt, mapping[4] or {}, { buf = self.bufid })
     vim.keymap.set(mapping[1], mapping[2], mapping[3], map_opt)
   end
 
@@ -198,7 +198,7 @@ function HelpPanel:render()
   -- Heading
   local comp = self.components.heading.comp
   s = 'Keymap Overview — <CR> To Use'
-  s = string.rep(' ', math.floor(self.state.width * 0.5 - vim.str_utfindex(s) * 0.5)) .. s
+  s = string.rep(' ', math.floor(self.state.width * 0.5 - vim.str_utfindex(s, 'utf-32') * 0.5)) .. s
   comp:add_line(s, 'DiffviewFilePanelTitle')
 
   for _, section in ipairs(self.components.sections) do

@@ -475,7 +475,7 @@ end
 function M.render(bufid, data)
   if not api.nvim_buf_is_loaded(bufid) then return end
 
-  local last = vim.loop.hrtime()
+  local last = vim.uv.hrtime()
   local was_modifiable = api.nvim_buf_get_option(bufid, 'modifiable')
   api.nvim_buf_set_option(bufid, 'modifiable', true)
 
@@ -508,7 +508,7 @@ function M.render(bufid, data)
   end
 
   api.nvim_buf_set_option(bufid, 'modifiable', was_modifiable)
-  M.last_draw_time = (vim.loop.hrtime() - last) / 1000000
+  M.last_draw_time = (vim.uv.hrtime() - last) / 1000000
 end
 
 M.RenderComponent = RenderComponent

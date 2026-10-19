@@ -119,7 +119,7 @@ describe('diffview.vcs.file', function()
         local name = api.nvim_buf_get_name(failed.bufnr)
         if case.fast_event then
           local was_fast = false
-          local timer = vim.loop.new_timer()
+          local timer = vim.uv.new_timer()
           timer:start(0, 0, function()
             timer:stop()
             timer:close()

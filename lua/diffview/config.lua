@@ -1,6 +1,5 @@
 require('diffview.bootstrap')
 
----@diagnostic disable: deprecated
 local EventEmitter = require('diffview.events').EventEmitter
 local actions = require('diffview.actions')
 local lazy = require('diffview.lazy')
@@ -20,15 +19,6 @@ local utils = lazy.require('diffview.utils') ---@module "diffview.utils"
 local M = {}
 
 local setup_done = false
-
----@deprecated
-function M.diffview_callback(cb_name)
-  if cb_name == 'select' then
-    -- Reroute deprecated action
-    return actions.select_entry
-  end
-  return actions[cb_name]
-end
 
 ---@class ConfigLogOptions
 ---@field single_file LogOptions
@@ -455,80 +445,6 @@ function M.setup(user_config)
   M._config = vim.tbl_deep_extend('force', utils.tbl_deep_clone(M.defaults), user_config)
   ---@type EventEmitter
   M.user_emitter = EventEmitter()
-
-  --#region DEPRECATION NOTICES
-
-  if type(M._config.file_panel.use_icons) ~= 'nil' then
-    utils.warn("'file_panel.use_icons' has been deprecated. See ':h diffview.changelog-64'.")
-  end
-
-  -- Move old panel preoperties to win_config
-  local old_win_config_spec = { 'position', 'width', 'height' }
-  for _, panel_name in ipairs({ 'file_panel', 'file_history_panel' }) do
-    local panel_config = M._config[panel_name]
-    ---@cast panel_config table
-    local notified = false
-
-    for _, option in ipairs(old_win_config_spec) do
-      if panel_config[option] ~= nil then
-        if not notified then
-          utils.warn(
-            ("'%s.{%s}' has been deprecated. See ':h diffview.changelog-136'."):format(
-              panel_name,
-              fmt_enum(old_win_config_spec, true)
-            )
-          )
-          notified = true
-        end
-        panel_config.win_config[option] = panel_config[option]
-        panel_config[option] = nil
-      end
-    end
-  end
-
-  -- Move old keymaps
-  if user_config.key_bindings then
-    M._config.keymaps = vim.tbl_deep_extend('force', M._config.keymaps, user_config.key_bindings)
-    user_config.keymaps = user_config.key_bindings
-    M._config.key_bindings = nil
-  end
-
-  local user_log_options = utils.tbl_access(user_config, 'file_history_panel.log_options')
-  if user_log_options then
-    local top_options = {
-      'single_file',
-      'multi_file',
-    }
-    for _, name in ipairs(top_options) do
-      if user_log_options[name] ~= nil then
-        utils.warn(
-          "Global config of 'file_panel.log_options' has been deprecated. See ':h diffview.changelog-271'."
-        )
-      end
-      break
-    end
-
-    local option_names = {
-      'max_count',
-      'follow',
-      'all',
-      'merges',
-      'no_merges',
-      'reverse',
-    }
-    for _, name in ipairs(option_names) do
-      if user_log_options[name] ~= nil then
-        utils.warn(
-          ("'file_history_panel.log_options.{%s}' has been deprecated. See ':h diffview.changelog-151'."):format(
-            fmt_enum(option_names, true)
-          )
-        )
-        break
-      end
-    end
-  end
-
-  --#endregion
 
   if #M._config.git_cmd == 0 then M._config.git_cmd = M.defaults.git_cmd end
 

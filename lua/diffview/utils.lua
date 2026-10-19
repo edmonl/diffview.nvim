@@ -20,7 +20,7 @@ M.path = lazy.require(
 )
 
 ---@return number # Current time (ms)
-function M.now() return vim.loop.hrtime() / 1000000 end
+function M.now() return vim.uv.hrtime() / 1000000 end
 
 ---@param msg string|string[]
 ---@param schedule? boolean Schedule the echo call.
@@ -1207,8 +1207,7 @@ function M.merge_sort(t, comparator)
   split_merge(t, 1, #t, comparator)
 end
 
---- @diagnostic disable-next-line: deprecated
-M.islist = vim.fn.has('nvim-0.10') == 1 and vim.islist or vim.tbl_islist
+M.islist = vim.islist
 
 --- @param t table
 --- @return any[]

@@ -361,7 +361,7 @@ function Panel:init_buffer()
     function()
       vim.api.nvim_exec_autocmds({ 'BufNew', 'BufFilePre' }, {
         group = Panel.au.group,
-        buffer = self.bufid,
+        buf = self.bufid,
         modeline = false,
       })
     end

@@ -5,7 +5,7 @@ local stub = require('luassert.stub')
 
 local await = async.await
 local async_test, eq = helpers.async_test, helpers.eq
-local uv = vim.loop
+local uv = vim.uv
 
 describe('diffview.job', function()
   describe('completion ordering', function()

@@ -84,7 +84,7 @@ function DiffView:post_open()
   })
 
   if config.get_config().watch_index and self.adapter:instanceof(GitAdapter.__get()) then
-    self.watcher = vim.loop.new_fs_poll()
+    self.watcher = vim.uv.new_fs_poll()
     self.watcher:start(
       self.adapter.ctx.dir .. '/index',
       1000,
@@ -144,7 +144,7 @@ function DiffView:file_open_post(e, new_entry, old_entry)
       )
 
       api.nvim_create_autocmd({ 'TextChanged', 'TextChangedI' }, {
-        buffer = file.bufnr,
+        buf = file.bufnr,
         callback = function()
           if not self.attached_bufs[file.bufnr] then
             work:close()

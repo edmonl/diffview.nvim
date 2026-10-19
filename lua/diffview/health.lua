@@ -1,16 +1,5 @@
-local health = vim.health or require('health')
+local health = vim.health
 local fmt = string.format
-
--- Polyfill deprecated health api
-if vim.fn.has('nvim-0.10') ~= 1 then
-  health = {
-    start = health.report_start,
-    ok = health.report_ok,
-    info = health.report_info,
-    warn = health.report_warn,
-    error = health.report_error,
-  }
-end
 
 local M = {}
 
@@ -35,7 +24,7 @@ local function lualib_available(name)
 end
 
 function M.check()
-  if vim.fn.has('nvim-0.7') == 0 then health.error('Diffview.nvim requires Neovim 0.7.0+') end
+  if vim.fn.has('nvim-0.12') == 0 then health.error('Diffview.nvim requires Neovim 0.12.0+') end
 
   -- LuaJIT
   if not _G.jit then

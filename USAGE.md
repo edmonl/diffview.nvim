@@ -211,8 +211,6 @@ simple input prompt, and create a new commit with the user's given message.
 
 ![vim.ui.input() demo](https://user-images.githubusercontent.com/2786478/274230878-661a30d5-cc1d-4a34-b196-c4adf9e9f8c5.gif)
 
-For Neovim ≥ v0.10:
-
 ```lua
 keymaps = {
   file_panel = {
@@ -239,42 +237,6 @@ keymaps = {
   },
 }
 ```
-
-<details>
-  <summary><b>For Neovim ≤ v0.10, use this function in place of <code>vim.system()</code></b></summary>
-
-```lua
---- @class system.Results
---- @field code integer
---- @field stdout string
---- @field stderr string
-
---- @param cmd string|string[]
---- @return system.Results
-local function system(cmd)
-  local results = {}
-
-  local function callback(_, data, event)
-    if event == "exit" then results.code = data
-    elseif event == "stdout" or event == "stderr" then
-      results[event] = table.concat(data, "\n")
-    end
-  end
-
-  vim.fn.jobwait({
-    vim.fn.jobstart(cmd, {
-      on_exit = callback,
-      on_stdout = callback,
-      on_stderr = callback,
-      stdout_buffered = true,
-      stderr_buffered = true,
-    })
-  })
-
-  return results
-end
-```
-</details>
 
 ### Use `:!cmd`
 

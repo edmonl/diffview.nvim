@@ -19,7 +19,7 @@ for any git rev.
 ## Requirements
 
 - Git ≥ 2.31.0
-- Neovim ≥ 0.7.0 (with LuaJIT)
+- Neovim ≥ 0.12.0 (with LuaJIT)
 - [nvim-web-devicons](https://github.com/nvim-tree/nvim-web-devicons) (optional) For file icons
 
 ## Installation

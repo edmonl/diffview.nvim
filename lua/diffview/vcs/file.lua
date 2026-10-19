@@ -15,8 +15,6 @@ local pl = lazy.access(utils, 'path') ---@type PathLib
 local api = vim.api
 local M = {}
 
-local HAS_NVIM_0_10 = vim.fn.has('nvim-0.10') == 1
-
 ---@class vcs.File.BufferLoad
 ---@field bufnr integer
 ---@field file vcs.File Buffer's data producer and index metadata owner.
@@ -227,7 +225,7 @@ File._create_buffer = async.wrap(function(self, fullname, load, callback)
   local ok, err = pcall(function()
     api.nvim_buf_set_name(bufnr, fullname)
     api.nvim_create_autocmd('BufWipeout', {
-      buffer = bufnr,
+      buf = bufnr,
       once = true,
       callback = function()
         if buffer_loads[fullname] == load then buffer_loads[fullname] = nil end
@@ -251,7 +249,7 @@ File._create_buffer = async.wrap(function(self, fullname, load, callback)
       utils.tbl_set(File.index_bufmap, { self.adapter.ctx.toplevel, self.path }, bufnr)
 
       api.nvim_create_autocmd('BufWriteCmd', {
-        buffer = bufnr,
+        buf = bufnr,
         nested = true,
         callback = function() self.adapter:stage_index_file(self) end,
       })
@@ -434,23 +432,16 @@ function File:attach_buffer(force, opt)
 
       -- Keymaps
       state.keymaps = config.extend_keymaps(conf.keymaps.view, state.keymaps)
-      local default_map_opt = { silent = true, nowait = true, buffer = self.bufnr }
+      local default_map_opt = { silent = true, nowait = true, buf = self.bufnr }
 
       for _, mapping in ipairs(state.keymaps) do
         local map_opt =
-          vim.tbl_extend('force', default_map_opt, mapping[4] or {}, { buffer = self.bufnr })
+          vim.tbl_extend('force', default_map_opt, mapping[4] or {}, { buf = self.bufnr })
         vim.keymap.set(mapping[1], mapping[2], mapping[3], map_opt)
       end
 
       -- Diagnostics
-      if state.disable_diagnostics then
-        if HAS_NVIM_0_10 then
-          vim.diagnostic.enable(false, { bufnr = self.bufnr })
-        else
-          ---@diagnostic disable-next-line: deprecated
-          vim.diagnostic.disable(self.bufnr)
-        end
-      end
+      if state.disable_diagnostics then vim.diagnostic.enable(false, { bufnr = self.bufnr }) end
 
       File.attached[self.bufnr] = state
     end
@@ -475,14 +466,7 @@ function File:detach_buffer()
       end
 
       -- Diagnostics
-      if state.disable_diagnostics then
-        if HAS_NVIM_0_10 then
-          vim.diagnostic.enable(true, { bufnr = self.bufnr })
-        else
-          ---@diagnostic disable-next-line: param-type-mismatch
-          vim.diagnostic.enable(self.bufnr)
-        end
-      end
+      if state.disable_diagnostics then vim.diagnostic.enable(true, { bufnr = self.bufnr }) end
 
       File.attached[self.bufnr] = nil
     end
