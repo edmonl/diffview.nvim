@@ -1553,13 +1553,14 @@ FileData                                        *diffview.api.views.diff.diff_vi
                 Table describing number of additions and deletions in the
                 file.
 
-            {left_null} (boolean)
-                If true, indicates that the left diff buffer should be
-                represented by the null buffer.
+            {left_null} (boolean|nil)
+                Override whether the left diff buffer is represented by the
+                null buffer. True forces an empty side; false keeps the normal
+                buffer. If omitted, infer from the Git status and revision.
 
-            {right_null} (boolean)
-                If true, indicates that the right diff buffer should be
-                represented by the null buffer.
+            {right_null} (boolean|nil)
+                Like `left_null`, but for the right diff buffer. Changes to
+                either flag also take effect when the view is refreshed.
 
             {selected} (boolean)
                 If true, indicates that this should be the initially selected

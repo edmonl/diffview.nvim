@@ -85,6 +85,18 @@ function FileEntry:destroy()
   self.layout:destroy()
 end
 
+---Reconcile empty sides while retaining files whose empty state is unchanged.
+---@param entry FileEntry Updated entry for the same path.
+function FileEntry:update_null_buffers(entry)
+  for _, symbol in ipairs({ 'a', 'b', 'c', 'd' }) do
+    local current, updated = self.layout[symbol], entry.layout[symbol]
+    if current and updated and current.file.nulled ~= updated.file.nulled then
+      current.file:destroy()
+      current:set_file(updated.file)
+    end
+  end
+end
+
 ---@param new_head Rev
 function FileEntry:update_heads(new_head)
   for _, file in ipairs(self.layout:files()) do
@@ -303,6 +315,7 @@ end
 
 ---@class FileEntry.with_layout.Opt : FileEntry.init.Opt
 ---@field nulled boolean
+---@field null_overrides? table<string, boolean> Per-side overrides; omitted sides use status inference.
 ---@field get_data git.FileDataProducer?
 
 ---@param layout_class Layout (class)
@@ -318,6 +331,7 @@ function FileEntry.with_layout(layout_class, opt)
       get_data = opt.get_data,
       rev = rev,
       nulled = utils.sate(
+        opt.null_overrides and opt.null_overrides[symbol],
         opt.nulled,
         select(2, pcall(layout_class.should_null, rev, opt.status, symbol))
       ),

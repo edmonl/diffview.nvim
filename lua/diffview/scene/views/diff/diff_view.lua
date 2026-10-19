@@ -382,6 +382,7 @@ DiffView.update_files = debounce.debounce_trailing(
           end
 
           v.cur_files[ai].status = v.new_files[bi].status
+          v.cur_files[ai]:update_null_buffers(v.new_files[bi])
           v.cur_files[ai]:validate_stage_buffers(index_stat)
 
           if new_head then v.cur_files[ai]:update_heads(new_head) end

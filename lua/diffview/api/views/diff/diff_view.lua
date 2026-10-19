@@ -19,8 +19,8 @@ local M = {}
 ---@field oldpath string|nil If the file has been renamed, this should be the old path, oterhwise nil.
 ---@field status string Git status symbol.
 ---@field stats GitStats|nil
----@field left_null boolean Indicates that the left buffer should be represented by the null buffer.
----@field right_null boolean Indicates that the right buffer should be represented by the null buffer.
+---@field left_null boolean|nil Override whether the left buffer is empty; nil infers from Git status.
+---@field right_null boolean|nil Override whether the right buffer is empty; nil infers from Git status.
 ---@field selected boolean|nil Indicates that this should be the initially selected file.
 
 ---@class CDiffView : DiffView
@@ -162,7 +162,7 @@ function CDiffView:create_file_entries(files)
               b = v.right,
             },
             get_data = self.get_file_data,
-            --FIXME: left_null, right_null
+            null_overrides = { a = file_data.left_null, b = file_data.right_null },
           })
         )
       end
