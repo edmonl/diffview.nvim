@@ -154,56 +154,54 @@ function Panel:get_config()
   local default_config = self:get_default_config(config.type)
   config = vim.tbl_deep_extend('force', default_config, config or {}) --[[@as table ]]
 
-  local function valid_enum(arg, values, optional)
-    return {
-      arg,
-      function(v) return (optional and v == nil) or vim.tbl_contains(values, v) end,
-      table.concat(vim.tbl_map(function(v) return ([['%s']]):format(v) end, values), '|'),
-    }
+  local function validate_enum(name, value, values, optional)
+    vim.validate(
+      name,
+      value,
+      function(v) return vim.tbl_contains(values, v) end,
+      optional,
+      table.concat(vim.tbl_map(function(v) return ([['%s']]):format(v) end, values), '|')
+    )
   end
 
-  vim.validate({ type = valid_enum(config.type, { 'split', 'float' }) })
+  validate_enum('type', config.type, { 'split', 'float' })
 
   if config.type == 'split' then
     ---@cast config PanelSplitSpec
     self.state.form = vim.tbl_contains({ 'top', 'bottom' }, config.position) and 'row' or 'column'
 
-    vim.validate({
-      position = valid_enum(config.position, { 'left', 'top', 'right', 'bottom' }),
-      relative = valid_enum(config.relative, { 'editor', 'win' }),
-      width = { config.width, 'number', true },
-      height = { config.height, 'number', true },
-      win_opts = { config.win_opts, 'table' },
-    })
+    vim.validate('height', config.height, 'number', true)
+    validate_enum('position', config.position, { 'left', 'top', 'right', 'bottom' })
+    validate_enum('relative', config.relative, { 'editor', 'win' })
+    vim.validate('width', config.width, 'number', true)
+    vim.validate('win_opts', config.win_opts, 'table')
   else
     ---@cast config PanelFloatSpec
     local border = { 'none', 'single', 'double', 'rounded', 'solid', 'shadow' }
 
-    vim.validate({
-      relative = valid_enum(config.relative, { 'editor', 'win', 'cursor' }),
-      win = { config.win, 'n', true },
-      anchor = valid_enum(config.anchor, { 'NW', 'NE', 'SW', 'SE' }, true),
-      width = { config.width, 'n', false },
-      height = { config.height, 'n', false },
-      row = { config.row, 'n', false },
-      col = { config.col, 'n', false },
-      zindex = { config.zindex, 'n', true },
-      style = valid_enum(config.style, { 'minimal' }, true),
-      win_opts = { config.win_opts, 'table' },
-      border = {
-        config.border,
-        function(v)
-          if v == nil then return true end
+    validate_enum('anchor', config.anchor, { 'NW', 'NE', 'SW', 'SE' }, true)
+    vim.validate(
+      'border',
+      config.border,
+      function(v)
+        if type(v) == 'table' then return #v >= 2 end
 
-          if type(v) == 'table' then return #v >= 2 end
-
-          return vim.tbl_contains(border, v)
-        end,
-        ('%s or a list of length >=2'):format(
-          table.concat(vim.tbl_map(function(v) return ([['%s']]):format(v) end, border), '|')
-        ),
-      },
-    })
+        return vim.tbl_contains(border, v)
+      end,
+      true,
+      ('%s or a list of length >=2'):format(
+        table.concat(vim.tbl_map(function(v) return ([['%s']]):format(v) end, border), '|')
+      )
+    )
+    vim.validate('col', config.col, 'number')
+    vim.validate('height', config.height, 'number')
+    validate_enum('relative', config.relative, { 'editor', 'win', 'cursor' })
+    vim.validate('row', config.row, 'number')
+    validate_enum('style', config.style, { 'minimal' }, true)
+    vim.validate('width', config.width, 'number')
+    vim.validate('win', config.win, 'number', true)
+    vim.validate('win_opts', config.win_opts, 'table')
+    vim.validate('zindex', config.zindex, 'number', true)
   end
 
   return config

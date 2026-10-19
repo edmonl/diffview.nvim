@@ -480,18 +480,18 @@ local function structure_fh_data(stat_data, keep_diff)
 
   -- Soft validate the data
   ret.valid = #namestat == #numstat
-    and pcall(vim.validate, {
-      left_hash = { ret.left_hash, 'string', true },
-      right_hash = { ret.right_hash, 'string' },
-      merge_hash = { ret.merge_hash, 'string', true },
-      author = { ret.author, 'string' },
-      time = { ret.time, 'number' },
-      time_offset = { ret.time_offset, 'string' },
-      rel_date = { ret.rel_date, 'string' },
-      ref_names = { ret.ref_names, 'string' },
-      reflog_selector = { ret.reflog_selector, 'string' },
-      subject = { ret.subject, 'string' },
-    })
+    and pcall(function()
+      vim.validate('author', ret.author, 'string')
+      vim.validate('left_hash', ret.left_hash, 'string', true)
+      vim.validate('merge_hash', ret.merge_hash, 'string', true)
+      vim.validate('ref_names', ret.ref_names, 'string')
+      vim.validate('reflog_selector', ret.reflog_selector, 'string')
+      vim.validate('rel_date', ret.rel_date, 'string')
+      vim.validate('right_hash', ret.right_hash, 'string')
+      vim.validate('subject', ret.subject, 'string')
+      vim.validate('time', ret.time, 'number')
+      vim.validate('time_offset', ret.time_offset, 'string')
+    end)
 
   return ret
 end
