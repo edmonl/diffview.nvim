@@ -293,6 +293,10 @@ COMMANDS                                        *diffview-commands*
                 or by the function name regex {funcname}, within the {file}.
                 You can specify this option more than once.
 
+                Line tracing requires Git's two-way textual patches. An
+                unsupported or malformed patch stops the history update with
+                an error identifying the affected commit.
+
         --diff-merges={value}
                 Determines how merge commits are treated. {value} can
                 be one of:

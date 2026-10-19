@@ -2,16 +2,18 @@ local async = require('diffview.async')
 local helpers = require('diffview.tests.helpers')
 local vcs = require('diffview.vcs')
 local line_history = require('diffview.vcs.adapters.git.line_history')
+local stub = require('luassert.stub')
 local Diff2Hor = require('diffview.scene.layouts.diff_2_hor').Diff2Hor
 local File = require('diffview.vcs.file').File
 local GitRev = require('diffview.vcs.adapters.git.rev').GitRev
+local JobStatus = require('diffview.vcs.utils').JobStatus
 
 local await = async.await
 local async_test, eq = helpers.async_test, helpers.eq
 local api = vim.api
 
 describe('Git line-history patches', function()
-  local root, adapter, buffers_before, initial
+  local root, adapter, buffers_before, initial, parse_stub
   local edited = { 'before', 'ONE', 'stable', 'TWO', 'after', 'tail' }
 
   local function run_git(...)
@@ -48,7 +50,9 @@ describe('Git line-history patches', function()
       '--format=%H %P',
       ...
     )
-    return line_history.parse(lines), vim.split(lines[1], ' ', { trimempty = true }), lines
+    local patches, err = line_history.parse(vim.list_slice(lines, 2))
+    eq(nil, err)
+    return patches, vim.split(lines[1], ' ', { trimempty = true }), lines
   end
 
   -- Assert only the paths and coordinates consumed by line history and folds;
@@ -84,6 +88,23 @@ describe('Git line-history patches', function()
     end
   end
 
+  local function collect_history()
+    return adapter
+      :file_history({
+        log_opt = {
+          single_file = {
+            L = { '2,2:tracked.txt' },
+            path_args = {},
+            follow = false,
+            max_count = 1,
+          },
+          multi_file = {},
+        },
+        layout_opt = { default_layout = Diff2Hor },
+      })
+      :collect()
+  end
+
   before_each(function()
     root, buffers_before = vim.fn.tempname(), {}
     for _, bufnr in ipairs(api.nvim_list_bufs()) do
@@ -112,6 +133,10 @@ describe('Git line-history patches', function()
   end)
 
   after_each(function()
+    if parse_stub then
+      parse_stub:revert()
+      parse_stub = nil
+    end
     await(async.scheduler())
     for _, bufnr in ipairs(api.nvim_list_bufs()) do
       if not buffers_before[bufnr] and bufnr ~= File.NULL_FILE.bufnr then
@@ -120,6 +145,38 @@ describe('Git line-history patches', function()
     end
     vim.fn.delete(root, 'rf')
   end)
+
+  it(
+    'parses only patch data when commit metadata resembles diff headers',
+    async_test(function()
+      git('config', 'user.name', 'diff --cc misleading.txt')
+      write('tracked.txt', { 'before', 'metadata test', 'stable', 'TWO', 'after', 'tail' })
+      commit('@@@ misleading subject')
+      local items = collect_history()
+      eq(2, #items)
+      eq(JobStatus.PROGRESS, items[1][1])
+      eq('tracked.txt', items[1][2].files[1].path)
+      eq(JobStatus.SUCCESS, items[2][1])
+    end)
+  )
+
+  it(
+    'reports a parser failure with the commit and ends history without success',
+    async_test(function()
+      local commit_hash = git('rev-parse', 'HEAD~1')[1]
+      local parse = line_history.parse
+      parse_stub = stub(line_history, 'parse', function(lines)
+        lines[#lines + 1] = 'diff --cc tracked.txt'
+        return parse(lines)
+      end)
+
+      local items = collect_history()
+      eq(1, #items)
+      eq(JobStatus.ERROR, items[1][1])
+      eq(true, items[1][3]:find(commit_hash, 1, true) ~= nil)
+      eq(true, items[1][3]:find('expected a two-way diff', 1, true) ~= nil)
+    end)
+  )
 
   it(
     'keeps disjoint traced ranges visible and folds the surrounding lines',
@@ -257,11 +314,12 @@ describe('Git line-history patches', function()
           'log',
           '--color=never',
           '--no-ext-diff',
-          '--format=%H %P',
+          '--format=',
           '-L2,2:tracked.txt',
           '--diff-merges=' .. mode
         )
-        local patches = line_history.parse(lines)
+        local patches, err = line_history.parse(lines)
+        eq(nil, err)
         local headers = 0
         for _, line in ipairs(lines) do
           if line:match('^diff ') then
@@ -282,5 +340,61 @@ describe('Git line-history patches', function()
         end
       end
     end)
+  )
+end)
+
+describe('Git line-history patch validation', function()
+  local patch = {
+    'diff --git a/file.txt b/file.txt',
+    '--- a/file.txt',
+    '+++ b/file.txt',
+    '@@ -1,1 +1,1 @@',
+    '-old',
+    '+new',
+  }
+
+  it('accepts commits without patches', function()
+    local files, err = line_history.parse({ '', '' })
+    eq(nil, err)
+    eq({}, files)
+  end)
+
+  it(
+    'rejects unsupported formats and incomplete patches without returning partial files',
+    function()
+      local cases = {
+        { lines = { 'diff --cc file.txt' }, error = 'expected a two-way diff' },
+        { lines = { 'diff --combined file.txt' }, error = 'expected a two-way diff' },
+        { replace = { 4, '@@@ -1,1 -1,1 +1,1 @@@' }, error = 'hunk header' },
+        { replace = { 4, '@@ -invalid +1,1 @@' }, error = 'hunk header' },
+        { replace = { 4, '@@ -0,1 +1,1 @@' }, error = 'invalid hunk coordinates' },
+        { replace = { 4, '@@ -1,1 +0,1 @@' }, error = 'invalid hunk coordinates' },
+        { replace = { 4, '@@ -1,0 +1,0 @@' }, error = 'invalid hunk coordinates' },
+        { replace = { 2, '--- /dev/null' }, error = 'invalid hunk coordinates' },
+        { replace = { 2, '--- wrong-prefix/file.txt' }, error = 'old path header' },
+        { replace = { 3, '+++ /dev/null' }, error = 'new path header' },
+        { lines = { patch[1] }, error = 'missing old path header' },
+        { lines = { patch[1], patch[2] }, error = 'missing new path header' },
+        { lines = { patch[1], patch[2], patch[3] }, error = 'missing hunk header' },
+        { lines = vim.list_slice(patch, 1, 5), error = 'truncated hunk body' },
+        { replace = { 5, 'unexpected body line' }, error = 'invalid hunk body' },
+        { replace = { 6, '-extra old line' }, error = 'exceeds its declared line counts' },
+        { lines = { patch[1], 'Binary files a/file.txt and b/file.txt differ' }, error = 'binary' },
+        { lines = { patch[1], 'GIT binary patch' }, error = 'binary' },
+        { lines = { patch[4], patch[5], patch[6] }, error = 'expected a two-way file' },
+      }
+
+      for _, case in ipairs(cases) do
+        local lines = vim.deepcopy(case.lines or patch)
+        if case.replace then lines[case.replace[1]] = case.replace[2] end
+        -- A valid earlier file must not escape as a partially parsed result.
+        local prefix = vim.deepcopy(patch)
+        prefix[#prefix + 1] = ''
+        lines = vim.list_extend(prefix, lines)
+        local files, err = line_history.parse(lines)
+        eq(nil, files)
+        eq(true, err ~= nil and err:find(case.error, 1, true) ~= nil)
+      end
+    end
   )
 end)

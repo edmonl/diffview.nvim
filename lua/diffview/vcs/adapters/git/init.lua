@@ -450,6 +450,7 @@ end
 ---@field namestat string[]
 ---@field numstat string[]
 ---@field diff? git.LineHistoryFile[]
+---@field diff_error? string
 ---@field valid boolean
 
 ---@param stat_data string[]
@@ -473,11 +474,13 @@ local function structure_fh_data(stat_data, keep_diff)
     subject = stat_data[8] and stat_data[8]:sub(3) or '',
   }
 
-  local namestat, numstat = structure_stat_data(stat_data, 9)
+  local namestat, numstat, data_end = structure_stat_data(stat_data, 9)
   ret.namestat = namestat
   ret.numstat = numstat
 
-  if keep_diff then ret.diff = line_history.parse(stat_data) end
+  if keep_diff then
+    ret.diff, ret.diff_error = line_history.parse(utils.vec_slice(stat_data, data_end))
+  end
 
   -- Soft validate the data
   ret.valid = #namestat == #numstat
@@ -955,6 +958,21 @@ GitAdapter.file_history_worker = async.void(function(self, out_stream, opt)
           goto continue
         end
       end
+    end
+
+    if new_data.diff_error then
+      out_stream:push({
+        JobStatus.ERROR,
+        nil,
+        fmt(
+          "Failed to parse line history for commit '%s': %s",
+          new_data.right_hash,
+          new_data.diff_error
+        ),
+      })
+      out_stream:close()
+      in_stream:close(true)
+      return
     end
 
     local commit = Commit({
