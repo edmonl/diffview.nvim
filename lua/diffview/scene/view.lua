@@ -78,6 +78,12 @@ function View:close()
 
     if #api.nvim_list_tabpages() == 1 then vim.cmd('tabnew') end
 
+    if self:is_cur_tabpage() then
+      -- Switch first so closing the view does not enter an unrelated tab.
+      local prev_tabpage = utils.tabnr_to_id(vim.fn.tabpagenr('#'))
+      if prev_tabpage then api.nvim_set_current_tabpage(prev_tabpage) end
+    end
+
     local pagenr = api.nvim_tabpage_get_number(self.tabpage)
     vim.cmd('tabclose ' .. pagenr)
   end
